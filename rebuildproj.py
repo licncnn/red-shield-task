@@ -36,7 +36,8 @@ class dbLogs(object):
 
         # 在fk_logid 上建立索引 ？
         try:
-            self.cursor.execute("""
+            self.cursor.execute(
+            """
                     CREATE INDEX idx_LOGEVENTS ON LOGEVENTS ( fk_logid );
             """)
         except Exception as e:
@@ -62,24 +63,28 @@ class dbLogs(object):
         except Exception as e:
             pass
 
-
+    #LOGS table 上增加一条记录
     def createParentRecord(self, logName, logLocationAbsolutePath, logDescription):
-        """This method adds a record to the LOGS table
-        @param: string - absolute path including name of the log
-        @param: string - description of the log"""
-
-        parentID = 0
+        """
+        参数：
+        @param: string - 日志名
+        @param: string - 日志全路劲（包括名字）
+        @param: string - 日志描述
+        """
+        parentID = 0 # init
         #find new key value for a new parent record
         self.cursor.execute("SELECT MAX(id) FROM LOGS;")
-        parentID = self.cursor.fetchone()[0]
-        if parentID == None:
+        parentID = self.cursor.fetchone()[0] # fetchone 获取一条消息
+        if parentID == None: # 如果表中没有记录
             parentID = 1
         else:
             parentID += 1
         print("[*] new parent ID={0} for log: '{1}'".format(parentID, logLocationAbsolutePath))
         try:
             # add parent record
+            # 单引号需要转义
             logDescription = logDescription.replace("'", "")
+            # 插入一条record 记录
             sql_statement = "INSERT INTO LOGS (id, log_name, log_file, log_description) VALUES ( {0}, '{1}', '{2}', '{3}');" \
                             .format(parentID, logName, logLocationAbsolutePath, logDescription)
             self.cursor.execute( sql_statement )
