@@ -1,4 +1,6 @@
 
+import sqlite3
+
 # -- dbLogs 类 --------------------------------------------------------------------------------------------
 class dbLogs(object):
     """类将所有direcect接口封装到数据库"""
@@ -159,4 +161,11 @@ class dbLogs(object):
         rows = self.cursor.fetchall()
         for logID, logName, eventDateTime, eventDescription in rows:
             print("{0:>3}  {1:<20}  {2}    {3}".format(logID, logName, eventDateTime, eventDescription))
+
+
+Db_logs = dbLogs()
+print(Db_logs)
+
+
+
 
