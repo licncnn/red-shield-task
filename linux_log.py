@@ -1,16 +1,13 @@
 #! /usr/bin/python
 #
-#  Filename:    LinuxLogs.py
-#  Version:     1.0
-#  Author:      Carlos Villegas
-#               cv127.0.0.1 [at] gmail [dot] com
+#  文件名:    LinuxLogs.py
+#  版本:     1.0
+#  介绍: 它是一个整合Linux日志的工具，使取证调查者能够查询所有事件
+#在一个事件周围的时间窗口内(即+/- 3秒，用户可调)的所有日志。LinuxLogs能够
+#搜索感兴趣的字符串。“脏话”、“黑名单”、“黑名单”等)，因为所有的事件都在一个方便的
+# 关系数据库。
 #
-#  Description: It is a tool that consolidates Linux logs of interest to allow the Forensics Investigator the ability to query all events
-#               across all logs within a time window (i.e. +/- 3 seconds, user adjustable) around an event. LinuxLogs has the ability to
-#               search for a string of interest (i.e. "dirty words", "hit list", black list", etc) because all events are conviniently in a
-#               relational database.
-#
-#               This script was done as a final project for Digital Forensics CS6963 at NYU.edu 
+#               a  project for 数字取证  at NYU.edu
 #
 #               The following Linux logs are processed:
 #
@@ -34,38 +31,38 @@
 #  
 #  Notes/Observations:
 #
-#      1) Future improvements
-#         a) Combine the two offset classes
-#         b) Refactor RTC related variables out of the parent class and into offset class(es)
-#         c) Add support to output query results to .csv format
-#         d) Add support for log trending by day/week/month/quarter/year
-#         e) Add support for automatic monitoring and saliency trigger and altes
-#         d) Add GUI support
-#         f) Add support for many many many other logs
+#      1) 未来的改进
+            # a)合并两个offset类
+            # b)将RTC相关的变量从父类中重构到offset类中
+            # c)支持输出。csv格式的查询结果
+            # d)添加支持日志趋势按天/周/月/季度/年
+            # e)添加对自动监控和显著性触发和变更的支持
+            # d)添加GUI支持
+            # f)添加对许多许多其他日志的支持
 #
-#      2) Some logs are either binary or encrypted. Their content is accessed in human readable format using the 'last -f /path/to/log' command
-#         Those logs are: /var/run/utmp
-#                         /var/log/wtmp 
-#                         /var/log/btmp
+#      2) 部分日志为二进制或加密日志。使用“last -f /path/to/log”命令以可读的格式访问它们的内容
+            # /var/run/utmp
+            # /var/log/wtmp
+            # /var/log/btmp
+            #此外，/var/log/btmp需要根权限来在活动系统上进行读访问;然而，在法医分析日志时
+            #(从一个磁盘映像并将所有文件解压缩到一个目录中)这个脚本将使用——root选项读取/var/log/btmp日志
+
+#      3) 以下日志的内容中没有日期和/或时间，因此不适合此脚本的目的
+        # a)/var/log/boot
+        # b) /var/log/lastlog
 #
-#         In addition, the /var/log/btmp requires root privileges for read access on a live system; however, when analyzing logs forensically
-#         (from a disk image and extract all files to a directory) the /var/log/btmp log will be read in by this script using the --root option.
-#
-#      3) The following logs do not have date and/or times in their contents, therefore it is not suitable for the purposes of this script
-#         a) /var/log/boot
-#         b) /var/log/lastlog
-#
-#      4) The /var/log/anaconda.log is not used in the Ubuntu Linux distribution which is what I develop in. Therefore it was not included
-#         in version 1.0 of this script. However, /var/log/anaconda.log processing will make its way into this script in a future versions.
-#
-#      5) The log /var/log/faillog was excluded because it provides information already provided by the /var/log/btmp file which is currently
-#         a log file that parsed.
-#
-#
+#       4) /var/log/anaconda.log在我开发的Ubuntu Linux发行版中没有使用。因此，它没有被包括在内
+        #在这个脚本的1.0版本中。但是，/var/log/anaconda.log处理将在未来的版本中加入到这个脚本中。
+
+      # 5)日志/var/log/faillog被排除，因为它提供了当前的/var/log/btmp文件已经提供的信息
+
+#被解析的日志文件。
 #
 #
 #
-#  Changelog:
+#
+#
+#  更新日志:
 #               06/15/2014   Create initial version. Created LinuxLog shell class and tested reading-in all logs
 #               06/23/2014   Add support to parse /var/log/dmesg
 #               06/24/2014   Add support to normalize time in /var/log/dmesg by using "RTC time: 14:13:21, date: 06/28/14"
@@ -93,7 +90,31 @@
 
 
 
-# The following is a list of libraries this program uses
+# /var/log/messages—包含全局系统消息，包括系统启动时记录的消息。在/var/log/messages中记录了一些内容，包括邮件、cron、守护进程、kern、auth等。
+# /var/log/dmesg -内核环缓冲区信息。当系统启动时，它会在屏幕上打印一些消息，这些消息显示内核在启动过程中检测到的硬件设备的信息。这些消息在内核循环缓冲区中可用，每当新消息出现时，旧消息就会被覆盖。您也可以使用dmesg命令查看该文件的内容。
+# /var/log/auth.log -系统授权信息，包括用户登录和使用的认证机制。
+# /var/log/boot.log—系统启动时记录的信息
+# /var/log/daemon.log—包含系统上运行的各种后台守护进程的日志信息
+# /var/log/dpkg.log -使用dpkg命令安装或删除包时记录的信息
+# /var/log/kern.log—内核的日志信息。对您排除自定义内核故障很有帮助。
+# /var/log/lastlog—显示所有用户最近的登录信息。这不是一个ascii文件。您应该使用lastlog命令来查看该文件的内容。
+# /var/log/maillog /var/log/mail.log—系统运行的邮件服务器的日志信息。例如，sendmail记录所有发送到此文件的项目的信息
+# /var/log/user.log -包含所有用户级别的日志信息
+# /var/log/Xorg.x.log - X . Log日志
+# /var/log/alternatives.log -更新的信息被记录到这个日志文件。在Ubuntu上，update-alternatives维护决定默认命令的符号链接。
+# /var/log/btmp—该文件包含登录失败的信息。使用最后一条命令查看btmp文件。例如，" last -f /var/log/btmp | more "
+# /var/log/cups—所有打印机和打印相关的日志信息
+# /var/log/anaconda.log—安装Linux操作系统时，所有与安装相关的消息都保存在该日志文件中
+# /var/log/yum.log -包含使用yum安装包时记录的信息
+# /var/log/cron—每当cron守护进程(或anacron)启动cron作业时，它都会将有关cron作业的信息记录在这个文件中
+# /var/log/secure—包含与认证和授权权限相关的信息。例如，sshd记录这里的所有消息，包括不成功的登录。
+# /var/log/wtmp或/var/log/utmp -登录记录。使用wtmp可以找出谁登录了系统。Who命令使用该文件显示信息。
+# /var/log/faillog—包含用户登录失败的次数。使用faillog命令显示该文件的内容。
+
+
+
+
+# 使用的库文件
 from __future__ import print_function
 import gc
 import os
@@ -145,7 +166,7 @@ class LogReaderStdParser:
 
 
     def readLogFile(self):
-        """Reads the log entires form the log file (and all its dirivitives i.e. auth.log, auth.log.1, auth.log.2.gz, etc), parses it and saves it to the database"""
+        """从日志文件（及其所有目录，即auth.log、auth.log.1、auth.log.2.gz等）读取日志实体，对其进行解析并将其保存到数据库中"""
 
         filenamePattern = self.logLocationAbsolutePath+"*"
 
@@ -169,7 +190,7 @@ class LogReaderStdParser:
                             print("    [*] {0:>12,} log entires parsed for file: '{1}'.".format(c, file), end="\r")
                             line = line.rstrip() # remove training whitespaces including '\n'
                             self.decode_entry(line)
-            except Exception, e:
+            except Exception as e:
                 pass
             else:
                 print(" ")
@@ -203,7 +224,7 @@ class LogReaderStdParser:
                 c+=1
                 print("[*] saving {0:>8,} unique log entires for the '{1}' system log to 'LinuxLogs.db'".format(c, self.logLocationAbsolutePath), end = "\r")
                 #cvcvcvdb.saveEvent( logID, eventDateTime, eventDescription )
-        except Exception, e:
+        except Exception as e:
             pass
         print("[*] saved {0:>8,} unique log entires for the '{1}' system log to 'LinuxLogs.db'".format(c, self.logLocationAbsolutePath))
         print(" ")
@@ -216,7 +237,7 @@ class LogReaderStdParser:
         @param: string - The description of the log event"""
         try:
             self.events.add((logID, eventDateTime, eventDescription))
-        except Exception, e:
+        except Exception as e:
             pass
 
 
@@ -234,7 +255,7 @@ class LogReaderStdParser:
             splitOnSpaces = singleLogEntry.split(' ')
             eventDescription = (' '.join(splitOnSpaces[:4]), ' '.join(splitOnSpaces[4:]))[1]
             self.saveEvent( self.parentRecordID, eventTime, eventDescription)
-        except Exception, e:
+        except Exception as e:
             pass
         finally:
             return eventTime, eventDescription
@@ -259,7 +280,7 @@ class LogReaderParserYYYYMMDD(LogReaderStdParser):
             eventDescription = singleLogEntry[20:]
             eventTime = datetime.datetime.strptime(singleLogEntry[:19], "%Y-%m-%d %H:%M:%S")
             self.saveEvent( self.parentRecordID, eventTime, eventDescription)
-        except Exception, e:
+        except Exception as e:
             pass
 
 
@@ -286,7 +307,7 @@ class LogReaderParserTextYYYYMMDD(LogReaderStdParser):
             #format string obtained from https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
             eventTime = datetime.datetime.strptime(splitOnSpaces[1] + ' ' + splitOnSpaces[2][:8], "%Y-%m-%d %H:%M:%S")
             self.saveEvent( self.parentRecordID, eventTime, eventDescription)
-        except Exception, e:
+        except Exception as e:
             pass
 
 
@@ -316,7 +337,7 @@ class LogReaderParserTextDateInSquareBrackets(LogReaderStdParser):
             #target format: '12/Jul/2014:06:52:52'
             eventTime = datetime.datetime.strptime(singleLogEntry[start+1:end-6], "%d/%b/%Y:%H:%M:%S")
             self.saveEvent( self.parentRecordID, eventTime, eventDescription)
-        except Exception, e:
+        except Exception as e:
             pass
 
 
@@ -357,7 +378,7 @@ class LogReaderOffsetParserDMESG(LogReaderStdParser):
         # note: Rounding is more appropriate for our case than truncating
         try:
             offsetSecondsSincePowerOn = int( round( float(singleLogEntry[1:endOfseconds]) ) )
-        except Exception, e:
+        except Exception as e:
             offsetSecondsSincePowerOn = 0
         return offsetSecondsSincePowerOn
 
@@ -387,7 +408,7 @@ class LogReaderOffsetParserDMESG(LogReaderStdParser):
                         self.saveEvent( self.parentRecordID, eventTime, item[1])
                     # empty the preRTC because all items have been saved and reset it for the next possible log file within this log family
                     self.preRTC = []
-                except Exception, e:
+                except Exception as e:
                     pass
             else:
                 # extract offset and description and store them into a preRTS list as a temporarily holding structure
@@ -410,163 +431,160 @@ class LogReaderOffsetParserDMESG(LogReaderStdParser):
 
 
 
+# # -- dbLogs classes --------------------------------------------------------------------------------------------
+# class dbLogs(object):
+#     """类将所有direcect接口封装到数据库"""
+
+#     def __init__(self, **kwargs):
+#         """sqlite3 构造器 连接数据库"""
+#         self.connection = sqlite3.connect('LinuxLogs.db')
+#         self.cursor = self.connection.cursor()
 
 
-# -- dbLogs classes --------------------------------------------------------------------------------------------
-class dbLogs(object):
-    """Class encapsulates all direcect interface to the database"""
+#     def createDBitems(self):
+#         """Method that creates necessary tables and indices"""
+#         try:
+#             self.cursor.execute("""
+#                 CREATE TABLE LOGS (
+#                     id                   INTEGER PRIMARY KEY,
+#                     log_file             varchar(60)  NOT NULL,
+#                     log_name             varchar(30)  NOT NULL,
+#                     log_description      varchar(400) NOT NULL);
+#                     """)
+#         except Exception as e:
+#             pass
 
-    def __init__(self, **kwargs):
-        """Standard class constructor"""
-        self.connection = sqlite3.connect('LinuxLogs.db')
-        self.cursor = self.connection.cursor()
+#         try:
+#             self.cursor.execute("""
+#                 CREATE TABLE LOGEVENTS (
+#                     id                   integer PRIMARY KEY AUTOINCREMENT,
+#                     fk_logid             integer NOT NULL ,
+#                     event_datetime       datetime NOT NULL,
+#                     event_description    varchar(400),
+#                     FOREIGN KEY ( fk_logid ) REFERENCES LOGS( id ) ON DELETE CASCADE ON UPDATE CASCADE);
+#             """)
+#         except Exception as e:
+#             pass
 
-
-    def createDBitems(self):
-        """Method that creates necessary tables and indices"""
-        try:
-            self.cursor.execute("""
-                CREATE TABLE LOGS ( 
-                    id                   INTEGER PRIMARY KEY,
-                    log_file             varchar(60)  NOT NULL,
-                    log_name             varchar(30)  NOT NULL,
-                    log_description      varchar(400) NOT NULL);
-                    """)
-        except Exception as e:
-            pass
-
-        try:
-            self.cursor.execute("""
-                CREATE TABLE LOGEVENTS ( 
-                    id                   integer PRIMARY KEY AUTOINCREMENT,
-                    fk_logid             integer NOT NULL ,
-                    event_datetime       datetime NOT NULL,
-                    event_description    varchar(400),
-                    FOREIGN KEY ( fk_logid ) REFERENCES LOGS( id ) ON DELETE CASCADE ON UPDATE CASCADE);
-            """)
-        except Exception as e:
-            pass
-
-        try:
-            self.cursor.execute("""
-                    CREATE INDEX idx_LOGEVENTS ON LOGEVENTS ( fk_logid );
-            """)
-        except Exception as e:
-            pass
-        finally:
-            pass
+#         try:
+#             self.cursor.execute("""
+#                     CREATE INDEX idx_LOGEVENTS ON LOGEVENTS ( fk_logid );
+#             """)
+#         except Exception as e:
+#             pass
+#         finally:
+#             pass
 
 
-    def dropDBitems(self):
-        """Method to delete tables and indices from database"""
-        try:
-            self.cursor.execute("DROP INDEX idx_LOGEVENTS;")
-        except Exception as e:
-            pass
+#     def dropDBitems(self):
+#         """Method to delete tables and indices from database"""
+#         try:
+#             self.cursor.execute("DROP INDEX idx_LOGEVENTS;")
+#         except Exception as e:
+#             pass
 
-        try:
-            self.cursor.execute("DROP TABLE LOGEVENTS;")
-        except Exception as e:
-            pass
+#         try:
+#             self.cursor.execute("DROP TABLE LOGEVENTS;")
+#         except Exception as e:
+#             pass
 
-        try:
-            self.cursor.execute("DROP TABLE LOGS;")
-        except Exception as e:
-            pass
-
-
-    def createParentRecord(self, logName, logLocationAbsolutePath, logDescription):
-        """This method adds a record to the LOGS table
-        @param: string - absolute path including name of the log
-        @param: string - description of the log"""
-        
-        parentID = 0
-        #find new key value for a new parent record
-        self.cursor.execute("SELECT MAX(id) FROM LOGS;")
-        parentID = self.cursor.fetchone()[0]
-        if parentID == None:
-            parentID = 1
-        else:
-            parentID += 1
-        print("[*] new parent ID={0} for log: '{1}'".format(parentID, logLocationAbsolutePath))
-        try:
-            # add parent record
-            logDescription = logDescription.replace("'", "")
-            sql_statement = "INSERT INTO LOGS (id, log_name, log_file, log_description) VALUES ( {0}, '{1}', '{2}', '{3}');" \
-                            .format(parentID, logName, logLocationAbsolutePath, logDescription)
-            self.cursor.execute( sql_statement )
-            self.connection.commit()
-        except Exception as e:
-            pass
-        finally:
-            pass
-        
-        return parentID
+#         try:
+#             self.cursor.execute("DROP TABLE LOGS;")
+#         except Exception as e:
+#             pass
 
 
-    def saveEvent( self, parentID, eventTime, eventDescription ):
-        """This method adds add a record to the LOGS table
-        @param: string - absolute path including name of the log
-        @param: string - description of the log"""
-        try:
-            # add child record
-            # note: eventTime needs to be a string of this format: yyyy-MM-dd HH:mm:ss
-            # format string obtained from https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
-            eventDescription = eventDescription.replace("'", "")
-            sql_statement = "INSERT INTO LOGEVENTS (fk_logid, event_datetime, event_description) VALUES ( {0}, '{1}', '{2}');" \
-                            .format(parentID, eventTime.strftime("%Y-%m-%d %H:%M:%S"), eventDescription)
-            self.cursor.execute( sql_statement )
-            self.connection.commit()
-        except Exception as e:
-            pass
-        finally:
-            pass
+#     def createParentRecord(self, logName, logLocationAbsolutePath, logDescription):
+#         """This method adds a record to the LOGS table
+#         @param: string - absolute path including name of the log
+#         @param: string - description of the log"""
+
+#         parentID = 0
+#         #find new key value for a new parent record
+#         self.cursor.execute("SELECT MAX(id) FROM LOGS;")
+#         parentID = self.cursor.fetchone()[0]
+#         if parentID == None:
+#             parentID = 1
+#         else:
+#             parentID += 1
+#         print("[*] new parent ID={0} for log: '{1}'".format(parentID, logLocationAbsolutePath))
+#         try:
+#             # add parent record
+#             logDescription = logDescription.replace("'", "")
+#             sql_statement = "INSERT INTO LOGS (id, log_name, log_file, log_description) VALUES ( {0}, '{1}', '{2}', '{3}');" \
+#                             .format(parentID, logName, logLocationAbsolutePath, logDescription)
+#             self.cursor.execute( sql_statement )
+#             self.connection.commit()
+#         except Exception as e:
+#             pass
+#         finally:
+#             pass
+#         return parentID
 
 
-    def displayLogContents( self, logID):
-        """This method displays every record in LOGEVENTS associated with a log file 
-        @param: string - THe LogID associated with all the events you want to see"""
-        self.cursor.execute("SELECT id, event_datetime, event_description FROM LOGEVENTS WHERE fk_logid=={0} ORDER BY event_datetime;".format(logID))
-        rows = self.cursor.fetchall()
-        for eventID, eventDateTime, eventDescription in rows:
-            print(eventID, eventDateTime, eventDescription)
+#     def saveEvent( self, parentID, eventTime, eventDescription ):
+#         """This method adds add a record to the LOGS table
+#         @param: string - absolute path including name of the log
+#         @param: string - description of the log"""
+#         try:
+#             # add child record
+#             # note: eventTime needs to be a string of this format: yyyy-MM-dd HH:mm:ss
+#             # format string obtained from https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+#             eventDescription = eventDescription.replace("'", "")
+#             sql_statement = "INSERT INTO LOGEVENTS (fk_logid, event_datetime, event_description) VALUES ( {0}, '{1}', '{2}');" \
+#                             .format(parentID, eventTime.strftime("%Y-%m-%d %H:%M:%S"), eventDescription)
+#             self.cursor.execute( sql_statement )
+#             self.connection.commit()
+#         except Exception as e:
+#             pass
+#         finally:
+#             pass
+
+
+#     def displayLogContents( self, logID):
+#         """This method displays every record in LOGEVENTS associated with a log file
+#         @param: string - THe LogID associated with all the events you want to see"""
+#         self.cursor.execute("SELECT id, event_datetime, event_description FROM LOGEVENTS WHERE fk_logid=={0} ORDER BY event_datetime;".format(logID))
+#         rows = self.cursor.fetchall()
+#         for eventID, eventDateTime, eventDescription in rows:
+#             print(eventID, eventDateTime, eventDescription)
         
 
 
-    def listLogIDs( self ):
-        """This method displays all LogIDs only and associated names stored in the 'LinuxLogs.py'"""
-        self.cursor.execute("SELECT id, log_file FROM LOGS ORDER BY id;")
-        rows = self.cursor.fetchall()
-        for logID, logName in rows:
-            print(logID, logName)        
+#     def listLogIDs( self ):
+#         """This method displays all LogIDs only and associated names stored in the 'LinuxLogs.py'"""
+#         self.cursor.execute("SELECT id, log_file FROM LOGS ORDER BY id;")
+#         rows = self.cursor.fetchall()
+#         for logID, logName in rows:
+#             print(logID, logName)
 
 
-    def queryEventsDateTimeWindow( self, startDateTime, endDateTime):
-        """This method displays every event accross all Logs that are within the given start and end dates (inclusive)
-        @param: datetime - Start date/time of the window you wish events be displayed
-        @param: datetime - End date/time of the window you wish events be displayed"""
-        queryStr = "SELECT LOGS.id, LOGS.log_name, LOGEVENTS.event_datetime, LOGEVENTS.event_description " +\
-                   "FROM LOGS, LOGEVENTS WHERE LOGS.id = LOGEVENTS.fk_logid AND " 
-        queryStr = queryStr + "LOGEVENTS.event_datetime >= Datetime('{0}') AND LOGEVENTS.event_datetime <= Datetime('{1}') ".format(startDateTime, endDateTime)
-        queryStr = queryStr + "ORDER BY LOGEVENTS.event_datetime;"
-        self.cursor.execute( queryStr )
-        rows = self.cursor.fetchall()
-        for logID, logName, eventDateTime, eventDescription in rows:
-            print("{0:>3}  {1:<20}  {2}    {3}".format(logID, logName, eventDateTime, eventDescription))
+#     def queryEventsDateTimeWindow( self, startDateTime, endDateTime):
+#         """This method displays every event accross all Logs that are within the given start and end dates (inclusive)
+#         @param: datetime - Start date/time of the window you wish events be displayed
+#         @param: datetime - End date/time of the window you wish events be displayed"""
+#         queryStr = "SELECT LOGS.id, LOGS.log_name, LOGEVENTS.event_datetime, LOGEVENTS.event_description " +\
+#                    "FROM LOGS, LOGEVENTS WHERE LOGS.id = LOGEVENTS.fk_logid AND "
+#         queryStr = queryStr + "LOGEVENTS.event_datetime >= Datetime('{0}') AND LOGEVENTS.event_datetime <= Datetime('{1}') ".format(startDateTime, endDateTime)
+#         queryStr = queryStr + "ORDER BY LOGEVENTS.event_datetime;"
+#         self.cursor.execute( queryStr )
+#         rows = self.cursor.fetchall()
+#         for logID, logName, eventDateTime, eventDescription in rows:
+#             print("{0:>3}  {1:<20}  {2}    {3}".format(logID, logName, eventDateTime, eventDescription))
 
 
-    def queryEventsSalientStr( self, stringMatch ):
-        """Searches the 'LinuxLogs.db' database for all events that contain a string within their description.
-        Use 'root' if, for example, you want to search for all events that contain 'root' anywhere within their event description field.
-        @param: string - a keyword representing an item from a 'hit list' or 'black list'"""
-        queryStr = "SELECT LOGS.id, LOGS.log_name, LOGEVENTS.event_datetime, LOGEVENTS.event_description " +\
-                   "FROM LOGS, LOGEVENTS WHERE LOGS.id = LOGEVENTS.fk_logid AND " 
-        queryStr = queryStr + "LOGEVENTS.event_description LIKE '%{0}%' ".format(stringMatch)
-        queryStr = queryStr + "ORDER BY LOGEVENTS.event_datetime;"
-        self.cursor.execute( queryStr )
-        rows = self.cursor.fetchall()
-        for logID, logName, eventDateTime, eventDescription in rows:
-            print("{0:>3}  {1:<20}  {2}    {3}".format(logID, logName, eventDateTime, eventDescription))
+#     def queryEventsSalientStr( self, stringMatch ):
+#         """Searches the 'LinuxLogs.db' database for all events that contain a string within their description.
+#         Use 'root' if, for example, you want to search for all events that contain 'root' anywhere within their event description field.
+#         @param: string - a keyword representing an item from a 'hit list' or 'black list'"""
+#         queryStr = "SELECT LOGS.id, LOGS.log_name, LOGEVENTS.event_datetime, LOGEVENTS.event_description " +\
+#                    "FROM LOGS, LOGEVENTS WHERE LOGS.id = LOGEVENTS.fk_logid AND "
+#         queryStr = queryStr + "LOGEVENTS.event_description LIKE '%{0}%' ".format(stringMatch)
+#         queryStr = queryStr + "ORDER BY LOGEVENTS.event_datetime;"
+#         self.cursor.execute( queryStr )
+#         rows = self.cursor.fetchall()
+#         for logID, logName, eventDateTime, eventDescription in rows:
+#             print("{0:>3}  {1:<20}  {2}    {3}".format(logID, logName, eventDateTime, eventDescription))
 
 
 
@@ -607,7 +625,7 @@ class LogReaderOffsetParserXORG(LogReaderStdParser):
         # note: Rounding is more appropriate for our case than truncating
         try:
             offsetSecondsSincePowerOn = int( round( float(singleLogEntry[1:endOfseconds]) ) )
-        except Exception, e:
+        except Exception  as e:
             offsetSecondsSincePowerOn = 0
         return offsetSecondsSincePowerOn
 
@@ -635,7 +653,7 @@ class LogReaderOffsetParserXORG(LogReaderStdParser):
                         for item in self.preRTC:
                             eventTime = self.RTC + datetime.timedelta(0, item[0])
                             self.saveEvent( self.parentRecordID, eventTime, item[1])
-                    except Exception, e:
+                    except Exception as e:
                         pass
             else:
                 # extract offset and description and store them into a preRTS list as a temporarily holding structure
@@ -746,7 +764,7 @@ class LogReader_BTMP_Parser(LogReaderStdParser):
                                 self.decode_entry( line )
                         except Exception as e:
                             pass
-            except Exception, e:
+            except Exception  as e:
                 pass
             else:
                 print(" ")
@@ -1076,7 +1094,7 @@ def main(argv):
 
     try:
         args=parser.parse_args()
-    except Exception, e:
+    except Exception as e:
         pass
 
     if( args.resetDB ):
@@ -1099,12 +1117,12 @@ def main(argv):
         splitQueryStr = args.query.split(',')
         try:
             parsedDateTime = datetime.datetime.strptime(splitQueryStr[0], "%Y-%m-%d %H:%M:%S")
-        except Exception, e:
+        except Exception as e:
             print("Opps! The DATE-TIME part of the query string you typed does not conform to the format: 'YYYY-MM-DD hh:mm:ss', please try again.")
         else:
             try:
                 isInteger = isinstance( int(splitQueryStr[1]), (int, long))
-            except Exception, e:
+            except Exception  as e:
                 print("Opps! The 'N' part of the query string you typed was not recognized and an integer, please try again.")
             else:
                 print("[*]format accepted")
@@ -1114,7 +1132,7 @@ def main(argv):
                     endOfWindow   = parsedDateTime + datetime.timedelta(0, int(splitQueryStr[1]))
                     print("[*]startOfWindow = '{0}' to endOfWindow = '{1}'".format(str(startOfWindow), str(endOfWindow)))
                     db.queryEventsDateTimeWindow( startOfWindow, endOfWindow)
-                except Exception, e:
+                except Exception as e:
                     pass
 
     if( args.stringMatch!=None ):
