@@ -99,7 +99,9 @@ class dbLogs(object):
 
 
     def saveEvent( self, parentID, eventTime, eventDescription ):
-        """This method adds add a record to the LOGS table
+
+        """LOGEVENTS 表中添加一条事件记录
+
         @param: string - absolute path including name of the log
         @param: string - description of the log"""
         try:
@@ -152,7 +154,8 @@ class dbLogs(object):
     def queryEventsSalientStr( self, stringMatch ):
         """Searches the 'LinuxLogs.db' database for all events that contain a string within their description.
         Use 'root' if, for example, you want to search for all events that contain 'root' anywhere within their event description field.
-        @param: string - a keyword representing an item from a 'hit list' or 'black list'"""
+        @param: string - a keyword representing an item from a 'hit list' or 'black list'
+        """
         queryStr = "SELECT LOGS.id, LOGS.log_name, LOGEVENTS.event_datetime, LOGEVENTS.event_description " +\
                    "FROM LOGS, LOGEVENTS WHERE LOGS.id = LOGEVENTS.fk_logid AND "
         queryStr = queryStr + "LOGEVENTS.event_description LIKE '%{0}%' ".format(stringMatch)
