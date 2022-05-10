@@ -98,6 +98,7 @@ class dbLogs(object):
         return parentID
 
 
+    #  父记录和子记录的区别是什么？
     def saveEvent( self, parentID, eventTime, eventDescription ):
 
         """LOGEVENTS 表中添加一条事件记录
@@ -105,9 +106,8 @@ class dbLogs(object):
         @param: string - absolute path including name of the log
         @param: string - description of the log"""
         try:
-            # add child record
-            # note: eventTime needs to be a string of this format: yyyy-MM-dd HH:mm:ss
-            # format string obtained from https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+            # # 添加子记录
+            # 注意：eventTime 需要是以下格式的字符串：yyyy-MM-dd HH：mm：ss
             eventDescription = eventDescription.replace("'", "")
             sql_statement = "INSERT INTO LOGEVENTS (fk_logid, event_datetime, event_description) VALUES ( {0}, '{1}', '{2}');" \
                             .format(parentID, eventTime.strftime("%Y-%m-%d %H:%M:%S"), eventDescription)
@@ -119,45 +119,50 @@ class dbLogs(object):
             pass
 
 
+    # feng@function :传入日志ID  根据LogID 查询到所有的events事件
     def displayLogContents( self, logID):
-        """This method displays every record in LOGEVENTS associated with a log file
-        @param: string - THe LogID associated with all the events you want to see"""
+        """
+            This method displays every record in LOGEVENTS associated with a log file
+            两张表 通过外键连接起来
+        """
         self.cursor.execute("SELECT id, event_datetime, event_description FROM LOGEVENTS WHERE fk_logid=={0} ORDER BY event_datetime;".format(logID))
         rows = self.cursor.fetchall()
         for eventID, eventDateTime, eventDescription in rows:
-            print(eventID, eventDateTime, eventDescription)
+            print(eventID, eventDateTime, eventDescription) # 打印事件id 事件 描述信息
 
 
-
+    # @function   显示LOGS表中的所有日志id与记录
     def listLogIDs( self ):
-        """This method displays all LogIDs only and associated names stored in the 'LinuxLogs.py'"""
+        """此方法仅显示所有 LogID 和存储在 'LinuxLogs.py'"""
         self.cursor.execute("SELECT id, log_file FROM LOGS ORDER BY id;")
         rows = self.cursor.fetchall()
         for logID, logName in rows:
             print(logID, logName)
 
-
+    #  feng @ 此方法显示给定开始日期和结束日期内的所有日志中的每个事件
+    # 参数 startDateTime      endDateTime
     def queryEventsDateTimeWindow( self, startDateTime, endDateTime):
-        """This method displays every event accross all Logs that are within the given start and end dates (inclusive)
-        @param: datetime - Start date/time of the window you wish events be displayed
-        @param: datetime - End date/time of the window you wish events be displayed"""
+        # 连表查询 id 连接
         queryStr = "SELECT LOGS.id, LOGS.log_name, LOGEVENTS.event_datetime, LOGEVENTS.event_description " +\
                    "FROM LOGS, LOGEVENTS WHERE LOGS.id = LOGEVENTS.fk_logid AND "
+        # 使用Datetime函数 转化成Datetime类型
         queryStr = queryStr + "LOGEVENTS.event_datetime >= Datetime('{0}') AND LOGEVENTS.event_datetime <= Datetime('{1}') ".format(startDateTime, endDateTime)
+        # 根据事件进行排序
         queryStr = queryStr + "ORDER BY LOGEVENTS.event_datetime;"
         self.cursor.execute( queryStr )
-        rows = self.cursor.fetchall()
+        rows = self.cursor.fetchall() # 获取所有数据
         for logID, logName, eventDateTime, eventDescription in rows:
             print("{0:>3}  {1:<20}  {2}    {3}".format(logID, logName, eventDateTime, eventDescription))
 
 
+    # 根据字符串在数据库中查找
     def queryEventsSalientStr( self, stringMatch ):
-        """Searches the 'LinuxLogs.db' database for all events that contain a string within their description.
-        Use 'root' if, for example, you want to search for all events that contain 'root' anywhere within their event description field.
-        @param: string - a keyword representing an item from a 'hit list' or 'black list'
+        """在 LinuxLogs.db 数据库中搜索在其描述中包含指定字符串的所有事件。
+        例如，如果要搜索  其事件描述字段中含有root字段的所有事件，请使用‘root’。
         """
         queryStr = "SELECT LOGS.id, LOGS.log_name, LOGEVENTS.event_datetime, LOGEVENTS.event_description " +\
                    "FROM LOGS, LOGEVENTS WHERE LOGS.id = LOGEVENTS.fk_logid AND "
+        # 通过like查询    %str% 的方式全局匹配   并且根据事件类型排序
         queryStr = queryStr + "LOGEVENTS.event_description LIKE '%{0}%' ".format(stringMatch)
         queryStr = queryStr + "ORDER BY LOGEVENTS.event_datetime;"
         self.cursor.execute( queryStr )
@@ -166,6 +171,7 @@ class dbLogs(object):
             print("{0:>3}  {1:<20}  {2}    {3}".format(logID, logName, eventDateTime, eventDescription))
 
 
+########   测试  生成
 Db_logs = dbLogs()
 print(Db_logs)
 

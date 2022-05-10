@@ -135,15 +135,189 @@ import subprocess
 
 
 
-# -- Parent LogReaderStdParser classes --------------------------------------------------------------------------------------------
+
+# feng *__
+
+# -- dbLogs 类 --------------------------------------------------------------------------------------------
+class dbLogs(object):
+    """类将所有direcect接口封装到数据库"""
+    def __init__(self, **kwargs):
+        """sqlite3 构造器 连接数据库"""
+        self.connection = sqlite3.connect('LinuxLogs.db') # 连接数据库
+        self.cursor = self.connection.cursor() # 获取游标
+
+
+    def createDBitems(self):
+        """创建表 和索引"""
+        try:
+            self.cursor.execute("""
+                CREATE TABLE LOGS (
+                    id                   INTEGER PRIMARY KEY,
+                    log_file             varchar(60)  NOT NULL,
+                    log_name             varchar(30)  NOT NULL,
+                    log_description      varchar(400) NOT NULL);
+                    """)
+        except Exception as e:
+            pass
+
+        try:
+            self.cursor.execute("""
+                CREATE TABLE LOGEVENTS (
+                    id                   integer PRIMARY KEY AUTOINCREMENT,
+                    fk_logid             integer NOT NULL ,  # 外键 对应LOGS( id )
+                    event_datetime       datetime NOT NULL,
+                    event_description    varchar(400),
+                    # 级联删除 级联更新
+                    FOREIGN KEY ( fk_logid ) REFERENCES LOGS( id ) ON DELETE CASCADE ON UPDATE CASCADE);
+            """)
+        except Exception as e:
+            pass
+
+        # 在fk_logid 上建立索引 加快查询速度
+        try:
+            self.cursor.execute(
+            """
+                    CREATE INDEX idx_LOGEVENTS ON LOGEVENTS ( fk_logid );
+            """)
+        except Exception as e:
+            pass
+        finally:
+            pass
+
+
+    def dropDBitems(self):
+        """删除表和索引的方法"""
+        try:
+            self.cursor.execute("DROP INDEX idx_LOGEVENTS;")
+        except Exception as e:
+            pass
+
+        try:
+            self.cursor.execute("DROP TABLE LOGEVENTS;")
+        except Exception as e:
+            pass
+
+        try:
+            self.cursor.execute("DROP TABLE LOGS;")
+        except Exception as e:
+            pass
+
+    #LOGS table 上增加一条记录
+    def createParentRecord(self, logName, logLocationAbsolutePath, logDescription):
+        """
+        参数：
+        @param: string - 日志名
+        @param: string - 日志全路劲（包括名字）
+        @param: string - 日志描述
+        """
+        parentID = 0 # init
+        #find new key value for a new parent record
+        self.cursor.execute("SELECT MAX(id) FROM LOGS;")
+        parentID = self.cursor.fetchone()[0] # fetchone 获取一条消息
+        if parentID == None: # 如果表中没有记录
+            parentID = 1
+        else:
+            parentID += 1
+        print("[*] new parent ID={0} for log: '{1}'".format(parentID, logLocationAbsolutePath))
+        try:
+            # add parent record
+            # 单引号需要转义
+            logDescription = logDescription.replace("'", "")
+            # 插入一条record 记录
+            sql_statement = "INSERT INTO LOGS (id, log_name, log_file, log_description) VALUES ( {0}, '{1}', '{2}', '{3}');" \
+                            .format(parentID, logName, logLocationAbsolutePath, logDescription)
+            self.cursor.execute( sql_statement )
+            self.connection.commit()
+        except Exception as e:
+            pass
+        finally:
+            pass
+        return parentID
+
+
+    #  父记录和子记录的区别是什么？
+    def saveEvent( self, parentID, eventTime, eventDescription ):
+
+        """LOGEVENTS 表中添加一条事件记录
+
+        @param: string - absolute path including name of the log
+        @param: string - description of the log"""
+        try:
+            # # 添加子记录
+            # 注意：eventTime 需要是以下格式的字符串：yyyy-MM-dd HH：mm：ss
+            eventDescription = eventDescription.replace("'", "")
+            sql_statement = "INSERT INTO LOGEVENTS (fk_logid, event_datetime, event_description) VALUES ( {0}, '{1}', '{2}');" \
+                            .format(parentID, eventTime.strftime("%Y-%m-%d %H:%M:%S"), eventDescription)
+            self.cursor.execute( sql_statement )
+            self.connection.commit()
+        except Exception as e:
+            pass
+        finally:
+            pass
+
+
+    # feng@function :传入日志ID  根据LogID 查询到所有的events事件
+    def displayLogContents( self, logID):
+        """
+            This method displays every record in LOGEVENTS associated with a log file
+            两张表 通过外键连接起来
+        """
+        self.cursor.execute("SELECT id, event_datetime, event_description FROM LOGEVENTS WHERE fk_logid=={0} ORDER BY event_datetime;".format(logID))
+        rows = self.cursor.fetchall()
+        for eventID, eventDateTime, eventDescription in rows:
+            print(eventID, eventDateTime, eventDescription) # 打印事件id 事件 描述信息
+
+
+    # @function   显示LOGS表中的所有日志id与记录
+    def listLogIDs( self ):
+        """此方法仅显示所有 LogID 和存储在 'LinuxLogs.py'"""
+        self.cursor.execute("SELECT id, log_file FROM LOGS ORDER BY id;")
+        rows = self.cursor.fetchall()
+        for logID, logName in rows:
+            print(logID, logName)
+
+    #  feng @ 此方法显示给定开始日期和结束日期内的所有日志中的每个事件
+    # 参数 startDateTime      endDateTime
+    def queryEventsDateTimeWindow( self, startDateTime, endDateTime):
+        # 连表查询 id 连接
+        queryStr = "SELECT LOGS.id, LOGS.log_name, LOGEVENTS.event_datetime, LOGEVENTS.event_description " +\
+                   "FROM LOGS, LOGEVENTS WHERE LOGS.id = LOGEVENTS.fk_logid AND "
+        # 使用Datetime函数 转化成Datetime类型
+        queryStr = queryStr + "LOGEVENTS.event_datetime >= Datetime('{0}') AND LOGEVENTS.event_datetime <= Datetime('{1}') ".format(startDateTime, endDateTime)
+        # 根据事件进行排序
+        queryStr = queryStr + "ORDER BY LOGEVENTS.event_datetime;"
+        self.cursor.execute( queryStr )
+        rows = self.cursor.fetchall() # 获取所有数据
+        for logID, logName, eventDateTime, eventDescription in rows:
+            print("{0:>3}  {1:<20}  {2}    {3}".format(logID, logName, eventDateTime, eventDescription))
+
+
+    # 根据字符串在数据库中查找
+    def queryEventsSalientStr( self, stringMatch ):
+        """在 LinuxLogs.db 数据库中搜索在其描述中包含指定字符串的所有事件。
+        例如，如果要搜索  其事件描述字段中含有root字段的所有事件，请使用‘root’。
+        """
+        queryStr = "SELECT LOGS.id, LOGS.log_name, LOGEVENTS.event_datetime, LOGEVENTS.event_description " +\
+                   "FROM LOGS, LOGEVENTS WHERE LOGS.id = LOGEVENTS.fk_logid AND "
+        # 通过like查询    %str% 的方式全局匹配   并且根据事件类型排序
+        queryStr = queryStr + "LOGEVENTS.event_description LIKE '%{0}%' ".format(stringMatch)
+        queryStr = queryStr + "ORDER BY LOGEVENTS.event_datetime;"
+        self.cursor.execute( queryStr )
+        rows = self.cursor.fetchall()
+        for logID, logName, eventDateTime, eventDescription in rows:
+            print("{0:>3}  {1:<20}  {2}    {3}".format(logID, logName, eventDateTime, eventDescription))
+
+
+
+
+
+
+# -- 父级-日志解析器类LogReaderStdParser 为所有日志读取器定义通用方法  其他解析器类均以此为参数 --------------------------------------------------------------------------------------------
 class LogReaderStdParser:
     """这个类知道如何以下面的格式解析日志条目，并为所有日志读取器定义通用方法。
         实例化所有日志日志实体的格式如下：
-    
         'Jul 11 17:54:32 <servername> <LogEntrySource>: <LogEntryDescription>'
-         
     For example:
-    
         'Jul 11 17:54:32 SpiderMan kernel: imklog 5.8.11, log source = /proc/kmsg started.'
     """
 
@@ -163,7 +337,6 @@ class LogReaderStdParser:
         self.events = set()
         self.readLogFile()
         self.saveEventsToDB()
-
 
     def readLogFile(self):
         """从日志文件（及其所有目录，即auth.log、auth.log.1、auth.log.2.gz等）读取日志实体，对其进行解析并将其保存到数据库中"""
@@ -426,174 +599,6 @@ class LogReaderOffsetParserDMESG(LogReaderStdParser):
         pass
 
 
-
-# feng *__
-
-# -- dbLogs 类 --------------------------------------------------------------------------------------------
-class dbLogs(object):
-    """类将所有direcect接口封装到数据库"""
-    def __init__(self, **kwargs):
-        """sqlite3 构造器 连接数据库"""
-        self.connection = sqlite3.connect('LinuxLogs.db') # 连接数据库
-        self.cursor = self.connection.cursor() # 获取游标
-
-
-    def createDBitems(self):
-        """创建表 和索引"""
-        try:
-            self.cursor.execute("""
-                CREATE TABLE LOGS (
-                    id                   INTEGER PRIMARY KEY,
-                    log_file             varchar(60)  NOT NULL,
-                    log_name             varchar(30)  NOT NULL,
-                    log_description      varchar(400) NOT NULL);
-                    """)
-        except Exception as e:
-            pass
-
-        try:
-            self.cursor.execute("""
-                CREATE TABLE LOGEVENTS (
-                    id                   integer PRIMARY KEY AUTOINCREMENT,
-                    fk_logid             integer NOT NULL ,  # 外键 对应LOGS( id )
-                    event_datetime       datetime NOT NULL,
-                    event_description    varchar(400),
-                    # 级联删除 级联更新
-                    FOREIGN KEY ( fk_logid ) REFERENCES LOGS( id ) ON DELETE CASCADE ON UPDATE CASCADE);
-            """)
-        except Exception as e:
-            pass
-
-        # 在fk_logid 上建立索引 ？
-        try:
-            self.cursor.execute(
-            """
-                    CREATE INDEX idx_LOGEVENTS ON LOGEVENTS ( fk_logid );
-            """)
-        except Exception as e:
-            pass
-        finally:
-            pass
-
-
-    def dropDBitems(self):
-        """删除表和索引的方法"""
-        try:
-            self.cursor.execute("DROP INDEX idx_LOGEVENTS;")
-        except Exception as e:
-            pass
-
-        try:
-            self.cursor.execute("DROP TABLE LOGEVENTS;")
-        except Exception as e:
-            pass
-
-        try:
-            self.cursor.execute("DROP TABLE LOGS;")
-        except Exception as e:
-            pass
-
-    #LOGS table 上增加一条记录
-    def createParentRecord(self, logName, logLocationAbsolutePath, logDescription):
-        """
-        参数：
-        @param: string - 日志名
-        @param: string - 日志全路劲（包括名字）
-        @param: string - 日志描述
-        """
-        parentID = 0 # init
-        #find new key value for a new parent record
-        self.cursor.execute("SELECT MAX(id) FROM LOGS;")
-        parentID = self.cursor.fetchone()[0] # fetchone 获取一条消息
-        if parentID == None: # 如果表中没有记录
-            parentID = 1
-        else:
-            parentID += 1
-        print("[*] new parent ID={0} for log: '{1}'".format(parentID, logLocationAbsolutePath))
-        try:
-            # add parent record
-            # 单引号需要转义
-            logDescription = logDescription.replace("'", "")
-            # 插入一条record 记录
-            sql_statement = "INSERT INTO LOGS (id, log_name, log_file, log_description) VALUES ( {0}, '{1}', '{2}', '{3}');" \
-                            .format(parentID, logName, logLocationAbsolutePath, logDescription)
-            self.cursor.execute( sql_statement )
-            self.connection.commit()
-        except Exception as e:
-            pass
-        finally:
-            pass
-        return parentID
-
-
-    def saveEvent( self, parentID, eventTime, eventDescription ):
-
-        """LOGEVENTS 表中添加一条事件记录
-
-        @param: string - absolute path including name of the log
-        @param: string - description of the log"""
-        try:
-            # add child record
-            # note: eventTime needs to be a string of this format: yyyy-MM-dd HH:mm:ss
-            # format string obtained from https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
-            eventDescription = eventDescription.replace("'", "")
-            sql_statement = "INSERT INTO LOGEVENTS (fk_logid, event_datetime, event_description) VALUES ( {0}, '{1}', '{2}');" \
-                            .format(parentID, eventTime.strftime("%Y-%m-%d %H:%M:%S"), eventDescription)
-            self.cursor.execute( sql_statement )
-            self.connection.commit()
-        except Exception as e:
-            pass
-        finally:
-            pass
-
-
-    def displayLogContents( self, logID):
-        """This method displays every record in LOGEVENTS associated with a log file
-        @param: string - THe LogID associated with all the events you want to see"""
-        self.cursor.execute("SELECT id, event_datetime, event_description FROM LOGEVENTS WHERE fk_logid=={0} ORDER BY event_datetime;".format(logID))
-        rows = self.cursor.fetchall()
-        for eventID, eventDateTime, eventDescription in rows:
-            print(eventID, eventDateTime, eventDescription)
-
-
-
-    def listLogIDs( self ):
-        """This method displays all LogIDs only and associated names stored in the 'LinuxLogs.py'"""
-        self.cursor.execute("SELECT id, log_file FROM LOGS ORDER BY id;")
-        rows = self.cursor.fetchall()
-        for logID, logName in rows:
-            print(logID, logName)
-
-
-    def queryEventsDateTimeWindow( self, startDateTime, endDateTime):
-        """This method displays every event accross all Logs that are within the given start and end dates (inclusive)
-        @param: datetime - Start date/time of the window you wish events be displayed
-        @param: datetime - End date/time of the window you wish events be displayed"""
-        queryStr = "SELECT LOGS.id, LOGS.log_name, LOGEVENTS.event_datetime, LOGEVENTS.event_description " +\
-                   "FROM LOGS, LOGEVENTS WHERE LOGS.id = LOGEVENTS.fk_logid AND "
-        queryStr = queryStr + "LOGEVENTS.event_datetime >= Datetime('{0}') AND LOGEVENTS.event_datetime <= Datetime('{1}') ".format(startDateTime, endDateTime)
-        queryStr = queryStr + "ORDER BY LOGEVENTS.event_datetime;"
-        self.cursor.execute( queryStr )
-        rows = self.cursor.fetchall()
-        for logID, logName, eventDateTime, eventDescription in rows:
-            print("{0:>3}  {1:<20}  {2}    {3}".format(logID, logName, eventDateTime, eventDescription))
-
-
-    def queryEventsSalientStr( self, stringMatch ):
-        """Searches the 'LinuxLogs.db' database for all events that contain a string within their description.
-        Use 'root' if, for example, you want to search for all events that contain 'root' anywhere within their event description field.
-        @param: string - a keyword representing an item from a 'hit list' or 'black list'
-        """
-        queryStr = "SELECT LOGS.id, LOGS.log_name, LOGEVENTS.event_datetime, LOGEVENTS.event_description " +\
-                   "FROM LOGS, LOGEVENTS WHERE LOGS.id = LOGEVENTS.fk_logid AND "
-        queryStr = queryStr + "LOGEVENTS.event_description LIKE '%{0}%' ".format(stringMatch)
-        queryStr = queryStr + "ORDER BY LOGEVENTS.event_datetime;"
-        self.cursor.execute( queryStr )
-        rows = self.cursor.fetchall()
-        for logID, logName, eventDateTime, eventDescription in rows:
-            print("{0:>3}  {1:<20}  {2}    {3}".format(logID, logName, eventDateTime, eventDescription))
-
-
 # -- LogReaderOffsetParserXORG classes --------------------------------------------------------------------------------------------
 class LogReaderOffsetParserXORG(LogReaderStdParser):
     """This class inherits form the LogReaderStdParser class but overwrides the necessary methods to parse logs that are
@@ -681,10 +686,6 @@ class LogReaderOffsetParserXORG(LogReaderStdParser):
 
 
 
-
-
-
-
 # -- LogReader_UTMP_WTMP_Parser classes --------------------------------------------------------------------------------------------
 class LogReader_UTMP_WTMP_Parser (LogReaderStdParser):
     """该类继承了LogReaderStdParser类的形式，但过度使用了必要的方法来解析
@@ -746,9 +747,6 @@ class LogReader_UTMP_WTMP_Parser (LogReaderStdParser):
 
 
 
-
-
-
 # -- LogReader_BTMP_Parser classes --------------------------------------------------------------------------------------------
 class LogReader_BTMP_Parser(LogReaderStdParser):
     """The /var/log/btmp records only failed login attempts. Use 'last -f /var/log/btmp' to view contents.
@@ -802,14 +800,15 @@ class LogReader_BTMP_Parser(LogReaderStdParser):
 
 #--[ start of main program ]-----------------------------------------------------------------------------------------------------
 
-db = dbLogs() # this instantiates the database object
+db = dbLogs() # 实例化数据库对象  产生LinuxLogs.db
 
 def readLogs( customRootDir="" ):
-    """Use a list to instantiate and hold all our log objects
-    @param: string - the argument passed-in by the '--rootDir' option which will be the common way for Forensic Investigators to use this script """
-    
-    # create filepath variables that take into account, if applicable, the argument passed-in by the '--rootDir' option
-    # which will be the common way for Forensic Investigators to use this script 
+    """
+        使用列表来实例化和保存我们所有的日志对象
+        如果/var的文件被拷贝到其他目录了  我们就可以指定customRootDir 对指定目录下的log文件进行分析
+    """
+    # 创建文件路径变量，这些变量会考虑由 --rootDir 选项传入的参数
+    # 常用方法
     filepath_dmesg        = "{0}/var/log/dmesg".format(customRootDir)
     filepath_cron         = "{0}/var/log/cron".format(customRootDir)
     filepath_messages     = "{0}/var/log/messages".format(customRootDir)
@@ -826,38 +825,32 @@ def readLogs( customRootDir="" ):
     filepath_user         = "{0}/var/log/user".format(customRootDir)
 
 
-    #
-    #
-    # start instantiating log readers of different kinds, each instantiation
-    # parses the log and stores it to the database. Note that the parent class
-    # has a few extra helper methods that we are not using, but are available
-    # for other developers of this script
+    # 开始实例化不同类型的日志读取器，每个实例化
+    # 分析日志并将其存储到数据库中。请注意，父类
+    # 有一些我们没有使用的额外帮助程序方法，但可用
+    # 适用于此脚本的其他开发人员
     #
     #
     
-
+    # dmesg log 解析器
     LogReaderOffsetParserDMESG( 
-        "dmesg log", filepath_dmesg, "Contains kernel ring buffer information. "+ \
-        "When the system boots up, it prints number of messages on the screen that "+ \
-        "displays information about the hardware devices that the kernel detects "+ \
-        "during boot process. These messages are available in kernel ring buffer and "+ \
-        "whenever the new message comes the old message gets overwritten. You can also "+ \
-        "view the content of this file using the dmesg command.")
-        #sample log:
+        "dmesg log", filepath_dmesg, "内核环缓冲区 ring buffer 信息。当系统启动时，它会在屏幕上打印一些消息\
+        ，这些消息显示内核在启动过程中检测到的硬件设备的信息。这些消息在内核循环缓冲区中可用，\
+        每当新消息出现时，旧消息就会被覆盖。您也可以使用dmesg命令查看该文件的内容。")
+
+        #样例数据 :
         #$ cat /var/log/dmesg
-        #...
         #[    0.177904] PM: Registering ACPI NVS region [mem 0x49f4e000-0x49f54fff] (28672 bytes)
         #[    0.178401] regulator-dummy: no parameters
         #[    0.178426] RTC time: 22:01:31, date: 07/10/14    <-- notice RTC time comes in eventually!
         #[    0.178448] NET: Registered protocol family 16
         #...
-
-    #deallocate/release memory that we do not need anymore
+    #gc 释放内存
     logReader = 0
     gc.collect()
 
 
-
+    # xorg log 解析器
     LogReaderOffsetParserXORG("xorg log", filepath_xorg, "Contains a log of messages from the X"),
         #sample log:
         #$ cat Xorg.0.log
@@ -868,13 +861,11 @@ def readLogs( customRootDir="" ):
         #[     4.124] (==) Log file: "/var/log/Xorg.0.log", Time: Mon Jul 14 20:48:05 2014   <-- notice RTC time comes in eventually!
         #[     4.124] (==) Using config file: "/etc/X11/xorg.conf"
         #[     4.124] (==) Using system config directory "/usr/share/X11/xorg.conf.d"
-    
     #deallocate/release memory that we do not need anymore
     logReader = 0
     gc.collect()
 
-
-
+    # messages log 解析器
     logReader = LogReaderStdParser(
         "messages log", filepath_messages, "Contains global system messages, "+ \
         "including the messages that are logged during system startup. Several "+ \
@@ -885,13 +876,12 @@ def readLogs( customRootDir="" ):
         #Jul 11 17:54:32 SpiderMan rsyslogd: [origin software="rsyslogd" swVersion="5.8.11" x-pid="8532" x-info="http://www.rsyslog.com"] start
         #Jul 11 17:54:32 SpiderMan rsyslogd: rsyslogd's groupid changed to 103
         #Jul 11 17:54:32 SpiderMan rsyslogd: rsyslogd's userid changed to 101
-        
-    #deallocate/release memory that we do not need anymore
+    #gc 释放内存
     logReader = 0
     gc.collect()
 
 
-
+    #syslog log 解析器
     logReader = LogReaderStdParser(
         "syslog log", filepath_syslog, "Syslog is a way for network devices to send "+ \
         "event messages to a logging server, usually known as a Syslog server. Most "+ \
@@ -904,13 +894,11 @@ def readLogs( customRootDir="" ):
         #Jun 29 07:39:48 SpiderMan anacron[11496]: Job `cron.daily' terminated
         #Jun 29 07:39:48 SpiderMan anacron[11496]: Normal exit (1 job run)
         #Jun 29 07:43:36 SpiderMan whoopsie[978]: online
-    
-    #deallocate/release memory that we do not need anymore
     logReader = 0
     gc.collect()
 
 
-
+    # auth log 认证日志解析器
     logReader = LogReaderStdParser(
         "auth log", filepath_auth, "Contains system authorization information, "+ \
         "including user logins and authentication machinsm that were used."),
@@ -920,13 +908,12 @@ def readLogs( customRootDir="" ):
         #Jul 11 17:54:32 SpiderMan sudo:   carlos : TTY=pts/3 ; PWD=/home/carlos ; USER=root ; COMMAND=/sbin/restart rsyslog
         #Jul 11 17:54:32 SpiderMan sudo: pam_unix(sudo:session): session opened for user root by carlos(uid=0)
         #Jul 11 18:34:59 SpiderMan dbus[507]: [system] Rejected send message, 3 matched rules; type="method_return", sender=":1.66" (uid=1000 pid=2090 comm="/usr/bin/pulseaudio --start --log-target=syslog ") interface="(unset)" member="(unset)" error name="(unset)" requested_reply="0" destination=":1.2" (uid=0 pid=622 comm="/usr/sbin/bluetoothd ")
-    
     #deallocate/release memory that we do not need anymore
     logReader = 0
     gc.collect()
 
 
-
+    # dpkg log 解析器
     logReader = LogReaderParserYYYYMMDD(
         "dpkg log", filepath_dpkg, "Records all the apt activities, such as installs "+ \
         "or upgrades, for the various package managers (dpkg, apt-get, synaptic, aptitude)."),
@@ -936,13 +923,12 @@ def readLogs( customRootDir="" ):
         #2014-07-04 16:55:36 status half-configured desktop-file-utils:i386 0.21-1ubuntu3
         #2014-07-04 16:55:36 status installed desktop-file-utils:i386 0.21-1ubuntu3
         #2014-07-04 16:55:36 trigproc gnome-menus:i386 3.8.0-1ubuntu5 3.8.0-1ubuntu5
-    
     #deallocate/release memory that we do not need anymore
     logReader = 0
     gc.collect()
 
 
-
+    # kern log  内核日志解析器
     logReader = LogReaderStdParser(
         "kern log", filepath_kern, "Contains information logged by the kernel. "+ \
         "Helpful for you to troubleshoot a custom-built kernel."),
@@ -955,26 +941,24 @@ def readLogs( customRootDir="" ):
         #Jul 10 15:01:36 SpiderMan kernel: [    5.109448] wlan0: associate with 10:bf:48:53:c7:90 (try 1/3)
         #Jul 10 15:01:36 SpiderMan kernel: [    5.112845] wlan0: RX AssocResp from 10:bf:48:53:c7:90 (capab=0x411 status=0 aid=4)
         #Jul 10 15:01:36 SpiderMan kernel: [    5.114950] wlan0: associated
-    
     #deallocate/release memory that we do not need anymore
     logReader = 0
     gc.collect()
 
 
-
+    # cron log 解析器
     logReader = LogReaderStdParser(
         "cron log", filepath_cron, "Whenever cron daemon (or anacron) starts a cron job, it "+ \
         "logs the information about the cron job in this file"),
         #sample log:
         #$ head /var/log/cron.log
         #Jul 12 08:17:01 SpiderMan CRON[5040]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
-    
     #deallocate/release memory that we do not need anymore
     logReader = 0
     gc.collect()
 
 
-
+    # daemon log 线程日志解析器
     logReader = LogReaderStdParser(
         "daemon log", filepath_deamon, "Contains information logged by the "+ \
         "various background daemons that runs on the system"),
@@ -984,13 +968,12 @@ def readLogs( customRootDir="" ):
         #Jul 12 08:05:20  whoopsie[1020]: last message repeated 2 times
         #Jul 12 08:09:02 SpiderMan whoopsie[1020]: online
         #Jul 12 08:15:16  whoopsie[1020]: last message repeated 5 times
-    
     #deallocate/release memory that we do not need anymore
     logReader = 0
     gc.collect()
 
 
-
+    # alternatives log 变更日志(比入软硬链接等) 解析器
     logReader = LogReaderParserTextYYYYMMDD(
         "alternatives log", filepath_alternatives, "Information by the "+ \
         "update-alternatives are logged into this log file. On Ubuntu, update-alternatives "+ \
@@ -1001,13 +984,12 @@ def readLogs( customRootDir="" ):
         #update-alternatives 2014-07-01 15:43:11: link group wish updated to point to /usr/bin/wish8.5
         #update-alternatives 2014-07-02 23:29:03: run with --remove x-www-browser /usr/bin/chromium-browser
         #update-alternatives 2014-07-04 07:53:48: link group mailx updated to point to /usr/bin/heirloom-mailx
-    
     #deallocate/release memory that we do not need anymore
     logReader = 0
     gc.collect()
 
 
-
+    # cups access log 解析器
     logReader = LogReaderParserTextDateInSquareBrackets(
         "cups access log", filepath_cupsaccess, "The access_log file lists each HTTP resource that "+ \
         "is accessed by a web browser or client. Each line is in an extended version of the so-called 'Common "+ \
@@ -1018,12 +1000,12 @@ def readLogs( customRootDir="" ):
         #localhost - carlos [12/Jul/2014:06:52:52 -0700] "POST / HTTP/1.1" 200 186 Renew-Subscription successful-ok
         #localhost - - [12/Jul/2014:07:06:52 -0700] "POST / HTTP/1.1" 401 186 Renew-Subscription successful-ok
         #localhost - carlos [12/Jul/2014:07:06:52 -0700] "POST / HTTP/1.1" 200 186 Renew-Subscription successful-ok
-    
     #deallocate/release memory that we do not need anymore
     logReader = 0
     gc.collect()
 
 
+    # 用户日志解析器
     logReader = LogReaderStdParser(
         "user log", filepath_user, "Contains information about all user level logs")
         #sample log:
@@ -1032,12 +1014,12 @@ def readLogs( customRootDir="" ):
         #Jul 21 18:10:31 SpiderMan pulseaudio[2114]: [bluetooth] bluetooth-util.c: Failed to release transport /org/bluez/656/hci0/dev_00_0C_8A_6E_0E_B5/fd10: Method "Release" with signature "s" on interface "org.bluez.MediaTransport" doesn't exist
         #Jul 22 18:53:07 SpiderMan mtp-probe: checking bus 3, device 6: "/sys/devices/pci0000:00/0000:00:14.0/usb3/3-9/3-9.1"
         #Jul 22 18:53:12 SpiderMan pulseaudio[1845]: [pulseaudio] pid.c: Daemon already running.
-    
     #deallocate/release memory that we do not need anymore
     logReader = 0
     gc.collect()
 
 
+    # utmp  wtmp 日志 解析器
     logReader = LogReader_UTMP_WTMP_Parser(
         "utmp & wtmp logs", filepath_utmp_wtmp, "The /var/run/utmp file will give you " +\
         "complete picture of users logins at which terminals, logouts, system events and " +\
@@ -1053,18 +1035,17 @@ def readLogs( customRootDir="" ):
         #carlos   pts/3        :0               Mon Jul 21 15:21 - 21:05  (05:44)
         #
         #wtmp begins Wed Jul  2 23:30:12 2014 """
-
     #deallocate/release memory that we do not need anymore
     logReader = 0
     gc.collect()
 
 
+    # BTMP 日志解析器
     logReader = LogReader_BTMP_Parser(
         "btmp log", filepath_btmp, "The /var/log/btmp records only failed login attempts. " +\
         "Use 'last -f /var/log/btmp' to view contents. Use 'last -f /var/log/btmp' to view " +\
         "contents. Note: there may be more logs in this family, so use a pattern of last  " +\
         "-f /var/log/btmp* to select them.")
-    
     #deallocate/release memory that we do not need anymore
     logReader = 0
     gc.collect()
@@ -1072,29 +1053,29 @@ def readLogs( customRootDir="" ):
 
 def databaseReset():
     """
-    This function will cause the database to be wiped out, tables and indicies dropped, recreated and reset to a clean slate
+    重置数据库  建立一个空的库
     """
     db.dropDBitems()
     db.createDBitems()
 
 
 def main(argv):
-    """Main's responsibility to accepts to parse arguments and carry-out user's choices."""
-
+    """main 函数      解析用户输入"""
     # reference: https://docs.python.org/2/howto/argparse.html
     parser = argparse.ArgumentParser(description='Linux系统日志分析&取证系统')
-    parser.add_argument("--resetDB",              help="删除数据库并重新读取日志",  action='store_true') #optional
-    parser.add_argument("--contents",             help="显示LinuxLogs的内容。LogID指定的一个日志的db",
+    parser.add_argument("--resetDB",help="删除数据库并重新读取日志",  action='store_true') #optional
+    parser.add_argument("--contents",help="显示LinuxLogs的内容。LogID指定的一个日志的db",
                                                         type=int, metavar="logID")  #optional w/argument
-    parser.add_argument("--query",                help="搜索LinuxLogs数据库，数据库中的所有事件，在 +- N秒内"+\
+    parser.add_argument("--query",help="搜索LinuxLogs数据库，数据库中的所有事件，在 +- N秒内"+\
                                                        "从特定日期/时间开始。“dateTimeStr”应该是这种格式 'YYYY-MM-DD hh:mm:ss, N' "+\
                                                        "例如: '2014-02-19 19:07:05, 3' 将列出所有日志时间处于"+\
                                                        "'2014-02-19 19:07:02' 和 '2014-02-19 19:07:08' (含)之间的所有事件.", \
                                                        type=str, metavar="dateTimeStr")  #optional w/argument
-    parser.add_argument("--logs",                 help="列出LinuxLogs.db中存储的所有Logid和相关日志名。", action='store_true')  #optional
-    parser.add_argument("--rootDir",              help="将Linux磁盘映像解压缩到所选目录时，请使用此选项。必须提供您具有读取权限的绝对路径。警告：这将导致“LinuxLogs”。要在新的根目录中擦除的数据库和要重新读取的日志。例如：如果将磁盘映像提取到主目录中名为“forensicTree”的子目录中，则应使用“/home/yourname/forensicTree”", type=str, metavar="newRootDir")  #optional w/argument
-    parser.add_argument("--stringMatch",          help="搜索“LinuxLogs”。数据库中包含描述中包含字符串的所有事件。例如，如果要在事件描述字段中的任何位置搜索包含“root”的所有事件，请使用“root”。", \
-                                                       type=str, metavar="descriptionStr")  #optional w/argument
+    parser.add_argument("--logs",help="列出LinuxLogs.db中存储的所有Logid和相关日志名。", action='store_true')  #optional
+    parser.add_argument("--rootDir",help="将Linux磁盘映像解压缩到所选目录时，请使用此选项。必须提供您具有读取权限的绝对路径。警告：这将导致“LinuxLogs”。要在新的根目录中擦除的数据库和要重新读取的日志。\
+                                        例如：如果将磁盘映像提取到主目录中名为“forensicTree”的子目录中，则应使用“/home/yourname/forensicTree”", type=str, metavar="newRootDir")  #optional w/argument
+    parser.add_argument("--stringMatch",help="搜索“LinuxLogs”。数据库中包含描述中包含字符串的所有事件。例如，如果要在事件描述字段中的任何位置搜索包含“root”的所有事件，请使用“root”。", \
+                                        type=str, metavar="descriptionStr")  #optional w/argument
 
     try:
         args=parser.parse_args()
