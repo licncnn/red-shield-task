@@ -137,8 +137,8 @@ import subprocess
 
 # -- Parent LogReaderStdParser classes --------------------------------------------------------------------------------------------
 class LogReaderStdParser:
-    """This class knows how to parse log entries in the format below and defines common methods to all log readers.
-    Instantiate for all logs log entires are of the format:
+    """这个类知道如何以下面的格式解析日志条目，并为所有日志读取器定义通用方法。
+        实例化所有日志日志实体的格式如下：
     
         'Jul 11 17:54:32 <servername> <LogEntrySource>: <LogEntryDescription>'
          
@@ -149,7 +149,7 @@ class LogReaderStdParser:
 
 
     def __init__(self, logName, logLocationAbsolutePath, logDescription):
-        """Constructor for the LogReader class and all inherited classes
+        """LogReader类和所有继承类的构造函数
         @param: string - The name of the log
         @param: string - The absolute path to the log (i.e. '/log/var/dmesg')
         @param: string - The description of the log"""
@@ -171,7 +171,7 @@ class LogReaderStdParser:
         filenamePattern = self.logLocationAbsolutePath+"*"
 
         for file in glob.glob(filenamePattern):
-            # we have a new files, so need to reset RTC because RTCs are relative to one file they are in
+            # 我们有一个新文件，所以需要重置RTC，因为RTC与它们所在的一个文件相关
             self.waitingForRTC = True; 
             self.preRTC = []
             c=0
@@ -232,7 +232,7 @@ class LogReaderStdParser:
 
 
     def saveEvent( self, logID, eventDateTime, eventDescription ):
-        """save log event to interal 'events' set. Set's unique properties are being used here to avoid possible duplicates introduced by processing archived versions of a log
+        """将日志事件保存到内部“事件”集中。这里使用Set的唯一属性，以避免处理归档版本的日志可能引入的重复
         @param: datetime - The date and time at which the log event occured
         @param: string - The description of the log event"""
         try:
@@ -242,8 +242,7 @@ class LogReaderStdParser:
 
 
     def decode_entry(self, singleLogEntry):
-        """This method knows how to parse log entries in the following format:  'Jul 11 17:54:32 <servername> <LogEntrySource>: <LogEntryDescription>'
-        @param: string - The log entry (event date/time and description)"""
+        """此方法知道如何以以下格式解析日志条目      @param: string - The log entry (event date/time and description)"""
         eventTime = 0
         eventDescription = ""
         try:
@@ -265,15 +264,15 @@ class LogReaderStdParser:
 
 # -- LogReaderParser classes --------------------------------------------------------------------------------------------
 class LogReaderParserYYYYMMDD(LogReaderStdParser):
-    """This class inherits form the LogReaderStdParser class and overwrides the necessary methods
-    to parse the log entires of the format:
+    """该类继承LogReaderStdParser类的形式，并覆盖必要的方法
+        要分析格式的日志实体，请执行以下操作：
     Use this class to read all log entires of the format:
         'YYYY-MM-DD HH:MM:SS <LogEntryDescription>'
     For example:
         '2014-07-07 20:00:15 install simplescreenrecorder:i386 <none> 0.3.0-4~ppa1~saucy1'"""
         
     def decode_entry(self, singleLogEntry):
-        """This method parses a log entry of the form: 'YYYY-MM-DD HH:MM:SS <LogEntryDescription>'
+        """此方法解析表单的日志条目: 'YYYY-MM-DD HH:MM:SS <LogEntryDescription>'
         @param: string - The log entry (event date/time and description)"""
         try:
             #format string obtained from https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
@@ -288,8 +287,7 @@ class LogReaderParserYYYYMMDD(LogReaderStdParser):
 
 # -- LogReaderParserTextDate classes --------------------------------------------------------------------------------------------
 class LogReaderParserTextYYYYMMDD(LogReaderStdParser):
-    """This class inherits form the LogReaderStdParser class and overwrides the necessary methods
-    to parse the log entires of the format:
+    """该类继承LogReaderStdParser类的形式，并覆盖必要的方法解析格式的日志实体:
     
         'some-text YYYY-MM-DD HH:MM:SS <LogEntryDescription>'
          
@@ -681,13 +679,19 @@ class LogReaderOffsetParserXORG(LogReaderStdParser):
 
 # -- LogReader_UTMP_WTMP_Parser classes --------------------------------------------------------------------------------------------
 class LogReader_UTMP_WTMP_Parser (LogReaderStdParser):
-    """This class inherits form the LogReaderStdParser class but overwrides the necessary methods to parse logs that are
-    offset-based instead of date-time based as in the parent class.
-    The /var/run/utmp file will give you complete picture of users logins at which terminals,
-    logouts, system events and current status of the system, system boot time (used by uptime) etc.
-    Use 'last -f /var/run/utmp' to view contents.
-    The /var/log/wtmp gives historical data of utmp. Use 'last -f /var/log/wtmp' to view contents.
-    note: last -f /var/log/wtmp ====  just last
+    """该类继承了LogReaderStdParser类的形式，但过度使用了必要的方法来解析
+
+在父类中，基于偏移量而不是基于日期时间。
+
+/var/run/utmp文件将为您提供用户登录终端的完整图片，
+
+注销、系统事件和系统当前状态、系统启动时间（正常运行时间使用）等。
+
+使用“last-f/var/run/utmp”查看内容。
+
+/var/log/wtmp提供utmp的历史数据。使用“last-f/var/log/wtmp”查看内容。
+
+注意：last-f/var/log/wtmp===just last
     
     Example 'last' command output:
 
@@ -1070,26 +1074,18 @@ def main(argv):
     """Main's responsibility to accepts to parse arguments and carry-out user's choices."""
 
     # reference: https://docs.python.org/2/howto/argparse.html
-    parser = argparse.ArgumentParser(description='Linux System Logs Analysis for Digital Forensics by Carlos Villegas')
-    parser.add_argument("--resetDB",              help="Causes database to be wiped and logs to be re-read.",  action='store_true') #optional
-    parser.add_argument("--contents",             help="Display contents of 'LinuxLogs.db' of one log specified by LogID",
+    parser = argparse.ArgumentParser(description='Linux系统日志分析&取证系统')
+    parser.add_argument("--resetDB",              help="删除数据库并重新读取日志",  action='store_true') #optional
+    parser.add_argument("--contents",             help="显示LinuxLogs的内容。LogID指定的一个日志的db",
                                                         type=int, metavar="logID")  #optional w/argument
-    parser.add_argument("--query",                help="Searches the 'LinuxLogs.db' database for all events within +/- window of N seconds "+\
-                                                       "from a specific date/tiem. The'dateTimeStr' should be of this format 'YYYY-MM-DD hh:mm:ss, N' "+\
-                                                       "with quotes. For example: '2014-02-19 19:07:05, 3' to list all events across all logs in "+\
-                                                       "the database in between '2014-02-19 19:07:02' and '2014-02-19 19:07:08' (inclusive).", \
+    parser.add_argument("--query",                help="搜索LinuxLogs数据库，数据库中的所有事件，在 +- N秒内"+\
+                                                       "从特定日期/时间开始。“dateTimeStr”应该是这种格式 'YYYY-MM-DD hh:mm:ss, N' "+\
+                                                       "例如: '2014-02-19 19:07:05, 3' 将列出所有日志时间处于"+\
+                                                       "'2014-02-19 19:07:02' 和 '2014-02-19 19:07:08' (含)之间的所有事件.", \
                                                        type=str, metavar="dateTimeStr")  #optional w/argument
-    parser.add_argument("--logs",                 help="Lists all LogIDs and associated LogNames stored in 'LinuxLogs.db'", action='store_true')  #optional
-    parser.add_argument("--rootDir",              help="Intended audience: Forensics Investigators. Use this when you have extracted a Linux " +\
-                                                       "disk image to a directory of your choice. An absolute path that you have read permissions " +\
-                                                       "must be given.  WARNING: this will cause the 'LinuxLogs.db' database to be wiped and logs " +\
-                                                       "to be re-read within the new root directory. For example: if you extracted the disk image " +\
-                                                       "to a subdirectory inside your home directory called 'forensicTree', then you should use " +\
-                                                       "'/home/yourname/forensicsTree'", \
-                                                       type=str, metavar="newRootDir")  #optional w/argument
-    parser.add_argument("--stringMatch",          help="Searches the 'LinuxLogs.db' database for all events that contain a string within their "+\
-                                                       "description. Use 'root' if, for example, you want to search for all events that contain "+\
-                                                       "'root' anywhere within their event description field.", \
+    parser.add_argument("--logs",                 help="列出LinuxLogs.db中存储的所有Logid和相关日志名。", action='store_true')  #optional
+    parser.add_argument("--rootDir",              help="将Linux磁盘映像解压缩到所选目录时，请使用此选项。必须提供您具有读取权限的绝对路径。警告：这将导致“LinuxLogs”。要在新的根目录中擦除的数据库和要重新读取的日志。例如：如果将磁盘映像提取到主目录中名为“forensicTree”的子目录中，则应使用“/home/yourname/forensicTree”", type=str, metavar="newRootDir")  #optional w/argument
+    parser.add_argument("--stringMatch",          help="搜索“LinuxLogs”。数据库中包含描述中包含字符串的所有事件。例如，如果要在事件描述字段中的任何位置搜索包含“root”的所有事件，请使用“root”。", \
                                                        type=str, metavar="descriptionStr")  #optional w/argument
 
     try:
@@ -1151,28 +1147,25 @@ def main(argv):
         args.stringMatch==None and
         args.rootDir==None ):
         
-        print("[*] no options detected. Please type 'LinuxLogs.py --help' for help on how to use this script.\n\nUSER GUIDE:\n\n" +\
-              "If you are a Forensic Investigator, \n\n" +\
-              "     these are the steps you must to do in the order specified:\n\n" +\
-              "     1. Extract all files within a disk image to a subdirectory, for example, extract them to FooBarDir\n\n" +\
-              "     2. Have this script read, parse and store logs into the 'LinuxLogs.db' database\n" +\
-              "        use this command:  $python LinuxLogs.py --rootDir 'FooBarDir' \n\n" +\
+        print("[*] 未检测到任何选项，请输入 'LinuxLogs.py --help' 来获取有关如何使用此脚本的帮助 \n\n用户引导:\n\n" +\
+              "如果你是取证人员, \n\n" +\
+              "     以下是您必须按照指定顺序执行的步骤:\n\n" +\
+              "     1. 将磁盘映像中的所有文件提取到子目录，例如，将它们提取到FooBarDir \n\n" +\
+              "     2. 让这个脚本读取、解析并将日志存储到数据库“LinuxLogs”中。使用以下命令： $python LinuxLogs.py --rootDir 'FooBarDir' \n\n" +\
               
-              "If you are a Network Security person or System Administrator,\n\n" +\
-              "     You must do this step first:\n\n" +\
-              "     1. Have this script read, parse and store logs into the 'LinuxLogs.db' database\n" +\
-              "        preferably run this as root:  $sudo python LinuxLogs.py --resetDB \n" +\
-              "        (running the above command with root privileges will give you read access to /var/log/btmp log file)\n\n" +\
+              "如果您是网络安全人员或系统管理员，\n\n" +\
+              "     你必须先做这一步:\n\n" +\
+              "     1. 让这个脚本读取、解析并将日志存储到“LinuxLogs”中。 数据库最好以root用户身份运行:  $sudo python LinuxLogs.py --resetDB (以root权限运行上述命令将授予您对/var/log/btmp日志文件的读取权限)\n\n" +\
 
-              "Once the database is populated (see above), you can do any or all following in any order you want any number of times:\n\n" +\
-              "     A. Query which logs were parsed and stored into the 'LinuxLogs.db' database'\n" +\
-              "        use this command:  $python LinuxLogs.py --logs \n\n" +\
-              "     B. Query an entire log to display all events associated with only one logID that are store in the 'LinuxLogs.db' database'\n" +\
-              "        use this command:  $python LinuxLogs.py --contents 8 \n\n" +\
-              "     C. Query the 'LinuxLogs.db' database for all events accross all logs that occured the within a date/time window'\n" +\
-              "        use this command:  $python LinuxLogs.py --query '2014-07-24 17:45:06, 2000' \n\n" +\
-              "     D. Quey the 'LinuxLogs.db' database for all events that contain a string of interest within their description field.\n"+\
-              "        use this command:  $python LinuxLogs.py --stringMatch 'chown' \n")
+              "一旦数据库被填充（见上文），您可以按照您想要的任何顺序多次执行以下任何或所有操作:\n\n" +\
+              "     A. 查询哪些日志被解析并存储到“LinuxLogs”中'\n" +\
+              "        使用这个命令:  $python LinuxLogs.py --logs \n\n" +\
+              "     B. 查询整个日志以显示仅与存储在“LinuxLogs”中的一个logID关联的所有事件\n" +\
+              "        使用这个命令:  $python LinuxLogs.py --contents 8 \n\n" +\
+              "     C. 查询“LinuxLogs”。所有事件的数据库访问在日期/时间窗口内发生的所有日志 " +\
+              "        使用这个命令:  $python LinuxLogs.py --query '2014-07-24 17:45:06, 2000' \n\n" +\
+              "     D. 查询“LinuxLogs”。用于在其描述字段中包含感兴趣字符串的所有事件。\n"+\
+              "        使用这个命令:  $python LinuxLogs.py --stringMatch 'chown' \n")
 
 
 if __name__ == '__main__':
