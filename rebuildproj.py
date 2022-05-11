@@ -34,7 +34,6 @@ class dbLogs(object):
             """)
         except Exception as e:
             print("error create LOGEVENTS")
-
             pass
 
         try:
