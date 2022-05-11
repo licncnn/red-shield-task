@@ -396,7 +396,7 @@ class LogReaderStdParser:
             for logID, eventDateTime, eventDescription in self.events:
                 c+=1
                 print("[*] saving {0:>8,} unique log entires for the '{1}' system log to 'LinuxLogs.db'".format(c, self.logLocationAbsolutePath), end = "\r")
-                #cvcvcvdb.saveEvent( logID, eventDateTime, eventDescription )
+                db.saveEvent( logID, eventDateTime, eventDescription )
         except Exception as e:
             pass
         print("[*] saved {0:>8,} unique log entires for the '{1}' system log to 'LinuxLogs.db'".format(c, self.logLocationAbsolutePath))
