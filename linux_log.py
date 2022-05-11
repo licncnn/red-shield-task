@@ -245,6 +245,7 @@ class dbLogs(object):
         try:
             # # 添加子记录
             # 注意：eventTime 需要是以下格式的字符串：yyyy-MM-dd HH：mm：ss
+            print('******',parentID,eventTime,eventDescription)
             eventDescription = eventDescription.replace("'", "")
             sql_statement = "INSERT INTO LOGEVENTS (fk_logid, event_datetime, event_description) VALUES ( {0}, '{1}', '{2}');" \
                             .format(parentID, eventTime.strftime("%Y-%m-%d %H:%M:%S"), eventDescription)
@@ -396,7 +397,7 @@ class LogReaderStdParser:
             for logID, eventDateTime, eventDescription in self.events:
                 c+=1
                 print("[*] saving {0:>8,} unique log entires for the '{1}' system log to 'LinuxLogs.db'".format(c, self.logLocationAbsolutePath), end = "\r")
-                #cvcvcvdb.saveEvent( logID, eventDateTime, eventDescription )
+                db.saveEvent( logID, eventDateTime, eventDescription )
         except Exception as e:
             pass
         print("[*] saved {0:>8,} unique log entires for the '{1}' system log to 'LinuxLogs.db'".format(c, self.logLocationAbsolutePath))
@@ -827,8 +828,8 @@ def readLogs( customRootDir="" ):
 
     # 开始实例化不同类型的日志读取器，每个实例化
     # 分析日志并将其存储到数据库中。请注意，父类
-    # 有一些我们没有使用的额外帮助程序方法，但可用适用于此脚本的其他开发人员
-    #
+    # 有一些我们没有使用的额外帮助程序方法，但可用
+    # 适用于此脚本的其他开发人员
     #
     #
     
