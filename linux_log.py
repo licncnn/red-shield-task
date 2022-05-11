@@ -165,16 +165,15 @@ class dbLogs(object):
             self.cursor.execute("""
                 CREATE TABLE LOGEVENTS (
                     id                   integer PRIMARY KEY AUTOINCREMENT,
-                    fk_logid             integer NOT NULL ,  # 外键 对应LOGS( id )
+                    fk_logid             integer NOT NULL , 
                     event_datetime       datetime NOT NULL,
                     event_description    varchar(400),
-                    # 级联删除 级联更新
+                    
                     FOREIGN KEY ( fk_logid ) REFERENCES LOGS( id ) ON DELETE CASCADE ON UPDATE CASCADE);
             """)
         except Exception as e:
             pass
 
-        # 在fk_logid 上建立索引 加快查询速度
         try:
             self.cursor.execute(
             """
