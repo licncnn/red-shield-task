@@ -27,22 +27,22 @@ class dbLogs(object):
             self.cursor.execute("""
                 CREATE TABLE LOGEVENTS (
                     id                   integer PRIMARY KEY AUTOINCREMENT,
-                    fk_logid             integer NOT NULL ,  # 外键 对应LOGS( id )
+                    fk_logid             integer NOT NULL ,
                     event_datetime       datetime NOT NULL,
                     event_description    varchar(400),
-                    # 级联删除 级联更新
                     FOREIGN KEY ( fk_logid ) REFERENCES LOGS( id ) ON DELETE CASCADE ON UPDATE CASCADE);
             """)
         except Exception as e:
+            print("error create LOGEVENTS")
             pass
 
-        # 在fk_logid 上建立索引 ？
         try:
             self.cursor.execute(
             """
                     CREATE INDEX idx_LOGEVENTS ON LOGEVENTS ( fk_logid );
             """)
         except Exception as e:
+            print("error create index")
             pass
         finally:
             pass
@@ -172,8 +172,9 @@ class dbLogs(object):
 
 
 ########   测试  生成
-Db_logs = dbLogs()
-print(Db_logs)
+db = dbLogs()
+db.createDBitems()
+print(db)
 
 
 
