@@ -444,6 +444,7 @@ class LogReaderStdParser:
 class LogReaderParserYYYYMMDD(LogReaderStdParser):
     """该类继承LogReaderStdParser类的形式，并覆盖必要的方法
         要分析格式的日志实体，请执行以下操作：
+        
     Use this class to read all log entires of the format:
         'YYYY-MM-DD HH:MM:SS <LogEntryDescription>'
     For example:
