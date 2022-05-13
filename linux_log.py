@@ -54,9 +54,7 @@
 #
 #       4) /var/log/anaconda.log在我开发的Ubuntu Linux发行版中没有使用。因此，它没有被包括在内
         #在这个脚本的1.0版本中。但是，/var/log/anaconda.log处理将在未来的版本中加入到这个脚本中。
-
       # 5)日志/var/log/faillog被排除，因为它提供了当前的/var/log/btmp文件已经提供的信息
-
 #被解析的日志文件。
 #
 #
@@ -1153,7 +1151,7 @@ def main(argv):
               "     B. 查询整个日志以显示仅与存储在“LinuxLogs”中的一个logID关联的所有事件\n" +\
               "        使用这个命令:  $python LinuxLogs.py --contents 8 \n\n" +\
               "     C. 查询“LinuxLogs”。所有事件的数据库访问在日期/时间窗口内发生的所有日志 " +\
-              "        使用这个命令:  $python LinuxLogs.py --query '2014-07-24 17:45:06, 2000' \n\n" +\
+              "        使用这个命令:  $python LinuxLogs.py --query '2022-05-02 17:45:06, 2000' \n\n" +\
               "     D. 查询“LinuxLogs”。用于在其描述字段中包含感兴趣字符串的所有事件。\n"+\
               "        使用这个命令:  $python LinuxLogs.py --stringMatch 'chown' \n")
 
