@@ -210,7 +210,7 @@ class dbLogs(object):
         @param: string - 日志全路劲（包括名字）
         @param: string - 日志描述
         """
-        parentID = 0 # init
+        parentID = 0 # LOGS表中的ID  为parentID
         #find new key value for a new parent record
         self.cursor.execute("SELECT MAX(id) FROM LOGS;")
         parentID = self.cursor.fetchone()[0] # fetchone 获取一条消息
@@ -239,7 +239,6 @@ class dbLogs(object):
     def saveEvent( self, parentID, eventTime, eventDescription ):
 
         """LOGEVENTS 表中添加一条事件记录
-
         @param: string - absolute path including name of the log
         @param: string - description of the log"""
         try:
@@ -444,7 +443,7 @@ class LogReaderStdParser:
 class LogReaderParserYYYYMMDD(LogReaderStdParser):
     """该类继承LogReaderStdParser类的形式，并覆盖必要的方法
         要分析格式的日志实体，请执行以下操作：
-        
+
     Use this class to read all log entires of the format:
         'YYYY-MM-DD HH:MM:SS <LogEntryDescription>'
     For example:
@@ -459,7 +458,7 @@ class LogReaderParserYYYYMMDD(LogReaderStdParser):
             eventTime = datetime.datetime.strptime(singleLogEntry[:19], "%Y-%m-%d %H:%M:%S")
             self.saveEvent( self.parentRecordID, eventTime, eventDescription)
         except Exception as e:
-            print('Wrong5! ')
+            print('Wrong! ')
             pass
 
 

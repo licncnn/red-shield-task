@@ -3,15 +3,10 @@
 #
 #  文件名:    LinuxLogs.py
 #  版本:     1.0
-#  介绍: 它是一个整合Linux日志的工具，使取证调查者能够查询所有事件
-#在一个事件周围的时间窗口内(即+/- 3秒，用户可调)的所有日志。LinuxLogs能够
-#搜索感兴趣的字符串。“脏话”、“黑名单”、“黑名单”等)，因为所有的事件都在一个方便的
-# 关系数据库。
-#
-#               a  project for 数字取证  at NYU.edu
-#
+#  介绍: 它是一个整合Linux日志的工具，可以方便的用于日志取证，使取证调查者能够查询所有事件，
+#       在一个事件发生的时间窗口内(即+/- 3秒)的所有日志。LinuxLogs能够
+#       搜索感兴趣的字符串。)，因为所有的事件都在一个方便的关系数据库。
 #               The following Linux logs are processed:
-#
 #                     '/var/log/dmesg'
 #                     '/var/log/messages'
 #                     '/var/log/syslog'
@@ -29,9 +24,7 @@
 #                     '/var/log/user'
 #                     '/var/log/secure'
 #                     
-#  
 #  Notes/Observations:
-#
 #      1) 未来的改进
             # a)合并两个offset类
             # b)将RTC相关的变量从父类中重构到offset类中
@@ -39,7 +32,7 @@
             # d)添加支持日志趋势按天/周/月/季度/年
             # e)添加对自动监控和显著性触发和变更的支持
             # d)添加GUI支持
-            # f)添加对许多许多其他日志的支持
+            # f)添加对许多其他日志的支持
 #
 #      2) 部分日志为二进制或加密日志。使用“last -f /path/to/log”命令以可读的格式访问它们的内容
             # /var/run/utmp
@@ -139,7 +132,7 @@ import subprocess
 
 # -- dbLogs 类 --------------------------------------------------------------------------------------------
 class dbLogs(object):
-    """类将所有direcect接口封装到数据库"""
+    """此类将所有direcect接口封装到数据库"""
     def __init__(self, **kwargs):
         """sqlite3 构造器 连接数据库"""
         self.connection = sqlite3.connect('LinuxLogs.db') # 连接数据库
@@ -233,7 +226,6 @@ class dbLogs(object):
         return parentID
 
 
-    #  父记录和子记录的区别是什么？
     def saveEvent( self, parentID, eventTime, eventDescription ):
 
         """LOGEVENTS 表中添加一条事件记录
@@ -338,7 +330,7 @@ class LogReaderStdParser:
         self.saveEventsToDB()
 
     def readLogFile(self):
-        """从日志文件（及其所有目录，即auth.log、auth.log.1、auth.log.2.gz等）读取日志实体，对其进行解析并将其保存到数据库中"""
+        """从日志文件（及其所有目录，即auth.log、auth.log.1、auth.log.2.gz等）读取日志记录，对其进行解析并将其保存到数据库中"""
 
         filenamePattern = self.logLocationAbsolutePath+"*"
 
@@ -353,14 +345,14 @@ class LogReaderStdParser:
                         for line in file_object:
                             c+=1
                             print("    [*] {0:>12,} log entires parsed for file: '{1}'.".format(c, file), end="\r")
-                            line = line.rstrip() # remove training whitespaces including '\n'
+                            line = line.rstrip() # 删除末尾的指定字符，包括：'\n'
                             self.decode_entry(line)
                 else:
                     with open(file) as file_object:
                         for line in file_object:
                             c+=1
                             print("    [*] {0:>12,} log entires parsed for file: '{1}'.".format(c, file), end="\r")
-                            line = line.rstrip() # remove training whitespaces including '\n'
+                            line = line.rstrip() # 删除末尾的指定字符，包括：'\n'
                             self.decode_entry(line)
             except Exception as e:
                 pass
@@ -369,25 +361,25 @@ class LogReaderStdParser:
 
 
     def getLogName(self):
-        """Returns the name of the log"""
+        """返回日志的名字"""
         logName = self.logName
         return logName
 
 
     def getLoglogLocationAbsolutePath(self):
-        """Returns the absolute path of the log"""
+        """返回日志的绝对路径"""
         logName = self.logLocationAbsolutePath
         return logName
 
 
     def getRecordCount(self):
-        """Returns the number of records associated with this log"""
+        """返回与该日志相关的所有记录数目"""
         count = self.count
         return count
 
 
     def saveEventsToDB( self ):
-        """This method interfaces with db to save the events that have been gathered so far"""
+        """与数据库db交互，用来保存到目前为止已经收集的事件。"""
         c=0
         
         try:
@@ -414,15 +406,16 @@ class LogReaderStdParser:
 
 
     def decode_entry(self, singleLogEntry):
-        """此方法知道如何以以下格式解析日志条目      @param: string - The log entry (event date/time and description)"""
+        """此方法用来爬取日志记录，须匹配: 'some-text YYYY-MM-DD HH:MM:SS <LogEntryDescription>'这种格式。
+        @param: string - The log entry (event date/time and description)"""
         eventTime = 0
         eventDescription = ""
         try:
-            # format string obtained from https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+            # 格式字符串来自 https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
             # target data '2014 Jul 11 17:54:32'
             eventTime = datetime.datetime.strptime(str(date.today().year)+ " " + singleLogEntry[:15], "%Y %b %d %H:%M:%S")
             
-            #description is after the fourth space
+            #在第四个空格之后描述
             splitOnSpaces = singleLogEntry.split(' ')
             eventDescription = (' '.join(splitOnSpaces[:4]), ' '.join(splitOnSpaces[4:]))[1]
             self.saveEvent( self.parentRecordID, eventTime, eventDescription)
@@ -436,9 +429,8 @@ class LogReaderStdParser:
 
 # -- LogReaderParser classes --------------------------------------------------------------------------------------------
 class LogReaderParserYYYYMMDD(LogReaderStdParser):
-    """该类继承LogReaderStdParser类的形式，并覆盖必要的方法
-        要分析格式的日志实体，请执行以下操作：
-    Use this class to read all log entires of the format:
+    """该类继承LogReaderStdParser类的形式，并通过重写必要的方法来爬取符合以下格式的日志记录:
+   用这个类来获取所有匹配以下格式的日志:
         'YYYY-MM-DD HH:MM:SS <LogEntryDescription>'
     For example:
         '2014-07-07 20:00:15 install simplescreenrecorder:i386 <none> 0.3.0-4~ppa1~saucy1'"""
@@ -447,7 +439,7 @@ class LogReaderParserYYYYMMDD(LogReaderStdParser):
         """此方法解析表单的日志条目: 'YYYY-MM-DD HH:MM:SS <LogEntryDescription>'
         @param: string - The log entry (event date/time and description)"""
         try:
-            #format string obtained from https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+            #格式字符串来自 https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
             eventDescription = singleLogEntry[20:]
             eventTime = datetime.datetime.strptime(singleLogEntry[:19], "%Y-%m-%d %H:%M:%S")
             self.saveEvent( self.parentRecordID, eventTime, eventDescription)
@@ -459,8 +451,7 @@ class LogReaderParserYYYYMMDD(LogReaderStdParser):
 
 # -- LogReaderParserTextDate classes --------------------------------------------------------------------------------------------
 class LogReaderParserTextYYYYMMDD(LogReaderStdParser):
-    """该类继承LogReaderStdParser类的形式，并覆盖必要的方法解析格式的日志实体:
-    
+    """该类继承LogReaderStdParser类的形式，并通过重写必要的方法来爬取符合以下格式的日志记录:
         'some-text YYYY-MM-DD HH:MM:SS <LogEntryDescription>'
          
     For example:
@@ -469,12 +460,12 @@ class LogReaderParserTextYYYYMMDD(LogReaderStdParser):
     """
 
     def decode_entry(self, singleLogEntry):
-        """This method parses a log entry of the form: 'some-text YYYY-MM-DD HH:MM:SS <LogEntryDescription>'
+        """此方法用来爬取日志记录，须匹配: 'some-text YYYY-MM-DD HH:MM:SS <LogEntryDescription>'这种格式。
         @param: string - The log entry (event date/time and description)"""
         try:
             splitOnSpaces = singleLogEntry.split(' ')
             eventDescription = ' '.join(splitOnSpaces[3:])
-            #format string obtained from https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+            #格式字符串来自 https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
             eventTime = datetime.datetime.strptime(splitOnSpaces[1] + ' ' + splitOnSpaces[2][:8], "%Y-%m-%d %H:%M:%S")
             self.saveEvent( self.parentRecordID, eventTime, eventDescription)
         except Exception as e:
@@ -483,10 +474,8 @@ class LogReaderParserTextYYYYMMDD(LogReaderStdParser):
 
 # -- LogReaderParserTextDateInSquareBrackets classes --------------------------------------------------------------------------------------------
 class LogReaderParserTextDateInSquareBrackets(LogReaderStdParser):
-    """This class inherits form the LogReaderStdParser class and overwrides the necessary methods
-    to parse the log entires of the format:
-    
-    Use this class to read all log entires of the format:
+    """该类继承了LogReaderStdParser类，并通过重写必要的方法来爬取符合以下格式的日志记录：
+    用这个类来获取所有匹配以下格式的日志:
     
         'some-text [MM/MMM/YYYY:HH:MM:SS -UTC] some-text'
          
@@ -496,15 +485,15 @@ class LogReaderParserTextDateInSquareBrackets(LogReaderStdParser):
     """
 
     def decode_entry(self, singleLogEntry):
-        """This method parses a log entry of the form: 'some-text YYYY-MM-DD HH:MM:SS <LogEntryDescription>'
+        """此方法用来爬取日志记录，须匹配: 'some-text YYYY-MM-DD HH:MM:SS <LogEntryDescription>'这种格式。 
         @param: string - The log entry (event date/time and description)"""
         try:
             start = singleLogEntry.find('[')
             end =  singleLogEntry.find(']')
             
             eventDescription = singleLogEntry[end+3:]
-            #format string obtained from https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
-            #target format: '12/Jul/2014:06:52:52'
+            #格式字符串来自 https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+            #目标格式: '12/Jul/2014:06:52:52'
             eventTime = datetime.datetime.strptime(singleLogEntry[start+1:end-6], "%d/%b/%Y:%H:%M:%S")
             self.saveEvent( self.parentRecordID, eventTime, eventDescription)
         except Exception as e:
@@ -513,10 +502,8 @@ class LogReaderParserTextDateInSquareBrackets(LogReaderStdParser):
 
 # -- LogReaderOffsetParserDMESG classes --------------------------------------------------------------------------------------------
 class LogReaderOffsetParserDMESG(LogReaderStdParser):
-    """This class inherits form the LogReaderStdParser class but overwrides the necessary methods to parse logs that are
-    offset-based instead of date-time based as in the parent class.
-    
-    Use this class to read all log entires of the format:
+    """这个类继承了LogReaderStdParser类，但通过重写必要的方法来爬取基于偏移量的日志记录，而不是像父类那样基于日期时间。
+    用这个类来获取所有匹配以下格式的日志:
     
         '[ offset sec]  <LogEntrySource>: <LogEntryDescription>'
          
@@ -527,7 +514,7 @@ class LogReaderOffsetParserDMESG(LogReaderStdParser):
 
 
     def __init__(self, logName, logLocationAbsolutePath, logDescription):
-        """Constructor for the class that knows how to parse the /var/log/dmesg log, this is a child class of LogReaderOffsetParserDMESG
+        """设计负责爬取/var/log/dmesg日志的类，定义构造函数，这是LogReaderOffsetParserDMESG的一个子类。
         @param: string - The name of the log
         @param: string - The absolute path to the log (i.e. '/log/var/dmesg')
         @param: string - The description of the log
@@ -539,13 +526,12 @@ class LogReaderOffsetParserDMESG(LogReaderStdParser):
 
 
     def extractTimeFromLogEntry(self, singleLogEntry):
-        """ extract offset and description and store them into a preRTS list as a temporarily holding structure
-        until we read-in RTC which will enable us to convert from offset to evnet time
+        """ 提取偏移量和描述，并将它们存储到一个临时的保存结构——preRTS列表中，直到我们读入RTC为止，以便我们后续将偏移量转换为EVNET时间。
         @param: string - The description of a log entry"""
 
         endOfseconds = singleLogEntry.find("]")
         
-        # note: Rounding is more appropriate for our case than truncating
+        # 注：对于我们的情况，四舍五入比截断更合适。
         try:
             offsetSecondsSincePowerOn = int( round( float(singleLogEntry[1:endOfseconds]) ) )
         except Exception as e:
@@ -554,43 +540,42 @@ class LogReaderOffsetParserDMESG(LogReaderStdParser):
 
 
     def decode_entry(self, singleLogEntry):
-        """This method normalizees time in /var/log/dmesg by using "RTC time: 14:13:21, date: 06/28/14
+        """此方法负责将/var/log/dmesg中的时间规范化，通过利用： "RTC time: 14:13:21, date: 06/28/14
         @param: string - The description of a log entry"""
         if( self.waitingForRTC == True ):
-            #look for RTC
+            #寻找RTC
             foundRTCat = singleLogEntry.find("RTC time:")  
             if( foundRTCat != -1 ):
-                # if did found clock time then store it for future events, and use it to calculate event
-                # timestamps of all previously stored event logs in 'preRTC' list this will put us up-to-date 
+                # 如果找到了时钟时间，则为未来的事件存储它，并使用它来计算事件。
+                # 在'preRTC'列表中所有先前存储的事件日志的时间戳，为了保持更新。
                 self.RTCstr = singleLogEntry[ foundRTCat+10: ]
                 if( self.RTCstr[0]==' '):
                     self.RTCstr = self.RTCstr.lstrip()
                     self.RTCstr = "0"+self.RTCstr
                 try:
-                    #format string obtained from https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+                    #格式字符串来自https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
                     self.RTC = datetime.datetime.strptime(self.RTCstr, "%H:%M:%S, date: %m/%d/%y")
                     self.waitingForRTC = False;
                     self.saveEvent( self.parentRecordID, self.RTC, singleLogEntry[foundRTCat:])
 
-                    # adjust/normalize from offset to local time
+                    # 从偏移量到当地时间的调整/正常化
                     for item in self.preRTC:
                         eventTime = self.RTC + datetime.timedelta(0, item[0])
                         self.saveEvent( self.parentRecordID, eventTime, item[1])
-                    # empty the preRTC because all items have been saved and reset it for the next possible log file within this log family
+                    # 清空preRTC，因为所有项目都已被保存，且为了这个日志系列中下一个可能的日志文件而重置。
                     self.preRTC = []
                 except Exception as e:
                     pass
             else:
-                # extract offset and description and store them into a preRTS list as a temporarily holding structure
-                # until we read-in RTC which will enable us to convert from offset to evnet time
+                # 提取偏移量和描述，并将它们存储到一个临时的保存结构——preRTS列表中，直到我们读入RTC为止，以便我们后续将偏移量转换为EVNET时间。
                 endOfseconds = singleLogEntry.find("]")
                 eventDescription = singleLogEntry[endOfseconds+2:]
                 
-                # note: Rounding is more precise if we want to query on a plus or minus windows in seconds
+                # 注：如果我们想以秒为单位查询正负窗口，四舍五入会更精确。
                 offsetSecondsSincePowerOn = self.extractTimeFromLogEntry( singleLogEntry )
                 self.preRTC.append( [offsetSecondsSincePowerOn, eventDescription])
         else:
-            #if already have clock, then use it to calculate time of log entry
+            #如果已经有了时钟，那么就用它来计算日志记录的时间。
             eventDescription = singleLogEntry[singleLogEntry.find("]")+2:]
             offsetSecondsSincePowerOn = self.extractTimeFromLogEntry( singleLogEntry )
             eventTime = self.RTC + datetime.timedelta(0,offsetSecondsSincePowerOn)
@@ -600,10 +585,9 @@ class LogReaderOffsetParserDMESG(LogReaderStdParser):
 
 # -- LogReaderOffsetParserXORG classes --------------------------------------------------------------------------------------------
 class LogReaderOffsetParserXORG(LogReaderStdParser):
-    """This class inherits form the LogReaderStdParser class but overwrides the necessary methods to parse logs that are
-    offset-based instead of date-time based as in the parent class.
+    """这个类继承了LogReaderStdParser类，但通过重写必要的方法来爬取基于偏移量的日志记录，而不是像父类那样基于日期时间。
     
-    Use this class to read all log entires of the format:
+    用这个类来获取所有匹配以下格式的日志:
     
         '[ offset sec]  <LogEntrySource>: <LogEntryDescription>'
          
@@ -614,7 +598,7 @@ class LogReaderOffsetParserXORG(LogReaderStdParser):
 
 
     def __init__(self, logName, logLocationAbsolutePath, logDescription):
-        """Constructor for the class that knows how to parse the /var/log/dmesg log, this is a child class of LogReaderOffsetParserDMESG
+        """设计负责爬取/var/log/dmesg日志的类，定义构造函数，这是LogReaderOffsetParserDMESG的一个子类。
         @param: string - The name of the log
         @param: string - The absolute path to the log (i.e. '/log/var/dmesg')
         @param: string - The description of the log
@@ -626,13 +610,12 @@ class LogReaderOffsetParserXORG(LogReaderStdParser):
 
 
     def extractTimeFromLogEntry(self, singleLogEntry):
-        """ extract offset and description and store them into a preRTS list as a temporarily holding structure
-        until we read-in RTC which will enable us to convert from offset to evnet time
+        """ 提取偏移量和描述，并将它们存储到一个临时的保存结构——preRTS列表中，直到我们读入RTC为止，以便我们后续将偏移量转换为EVNET时间。
         @param: string - The description of a log entry"""
 
         endOfseconds = singleLogEntry.find("]")
         
-        # note: Rounding is more appropriate for our case than truncating
+        # 注：对于我们的情况，四舍五入比截断更合适。
         try:
             offsetSecondsSincePowerOn = int( round( float(singleLogEntry[1:endOfseconds]) ) )
         except Exception  as e:
@@ -641,42 +624,41 @@ class LogReaderOffsetParserXORG(LogReaderStdParser):
 
 
     def decode_entry(self, singleLogEntry):
-        """This method normalizees time in /var/log/dmesg by using 'Log file: "/var/log/Xorg.0.log", Time: Mon Jul 14 20:48:05 2014'
+        """此方法负责将/var/log/dmesg中的时间规范化，通过利用： 'Log file: "/var/log/Xorg.0.log", Time: Mon Jul 14 20:48:05 2014'
         @param: string - The description of a log entry"""
         if( self.waitingForRTC == True ):
-            #look for RTC
+            #寻找RTC
             marker1 = singleLogEntry.find("Log file:")  
             if( marker1 != -1 ):
                 foundRTCat = singleLogEntry.find(", Time: ")
                 if( foundRTCat!= -1): 
                     
-                    # if did found clock time then store it for future events, and use it to calculate event
-                    # timestamps of all previously stored event logs in 'preRTC' list this will put us up-to-date 
+                    # 如果找到了时钟时间，则为未来的事件存储它，并使用它来计算事件。
+                    # 在'preRTC'列表中所有先前存储的事件日志的时间戳，用来保持更新。
                     self.RTCstr = singleLogEntry[ foundRTCat+8: ] #this should give us something of the form 'Mon Jul 14 20:48:05 2014' w/o quotes
                     try:
-                        #format string obtained from https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+                        #格式字符串来自 https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
                         self.RTC = datetime.datetime.strptime(self.RTCstr, "%a %b %d %H:%M:%S %Y")
                         self.waitingForRTC = False;
                         self.saveEvent( self.parentRecordID, self.RTC, singleLogEntry[marker1-5:])
     
-                        # adjust/normalize from offset to local time
+                        # 从偏移量到当地时间的调整/正常化
                         for item in self.preRTC:
                             eventTime = self.RTC + datetime.timedelta(0, item[0])
                             self.saveEvent( self.parentRecordID, eventTime, item[1])
                     except Exception as e:
                         pass
             else:
-                # extract offset and description and store them into a preRTS list as a temporarily holding structure
-                # until we read-in RTC which will enable us to convert from offset to evnet time
+                # 提取偏移量和描述，并将它们存储到一个临时的保存结构——preRTS列表中，直到我们读入RTC为止，以便我们后续将偏移量转换为EVNET时间。
                 endOfseconds = singleLogEntry.find("]")
                 if( endOfseconds!=-1):
                     eventDescription = singleLogEntry[endOfseconds+2:]
                     if( eventDescription!="" ): 
-                        # note: Rounding is more precise if we want to query on a plus or minus windows in seconds
+                        # 注：如果我们想以秒为单位查询正负窗口，四舍五入会更精确。
                         offsetSecondsSincePowerOn = self.extractTimeFromLogEntry( singleLogEntry )
                         self.preRTC.append( [offsetSecondsSincePowerOn, eventDescription])
         else:
-            #if already have clock, then use it to calculate time of log entry
+            #如果已经有了时钟，那么就用它来计算日志记录的时间。
             eventDescription = singleLogEntry[singleLogEntry.find("]")+2:]
             offsetSecondsSincePowerOn = self.extractTimeFromLogEntry( singleLogEntry )
             eventTime = self.RTC + datetime.timedelta(0,offsetSecondsSincePowerOn)
@@ -713,7 +695,7 @@ class LogReader_UTMP_WTMP_Parser (LogReaderStdParser):
 
 
     def readLogFile(self):
-        """This method reads every line of text of every log files associated with this class"""
+        """此方法读取与该类相关的每个日志文件的每行文本。"""
         try:
             subprocess_output = subprocess.check_output(["last"]) # note: last -f /var/log/wtmp ====  last
             c=0
@@ -726,16 +708,16 @@ class LogReader_UTMP_WTMP_Parser (LogReaderStdParser):
 
 
     def decode_entry(self, singleLogEntry):
-        """This method decodes log entries for the /var/log/wtmp log file"
+        """此方法对/var/log/wtmp日志文件的日志记录进行解码。"
         @param: string - The a single line in the log containing the date, time and description of the event"""
         try:
-            #extract one event only: log-in
-            #format string obtained from https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+            #只提取事件: log-in
+            #格式字符串来自 https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
             eventTime =  datetime.datetime.strptime(singleLogEntry[39:55]+":00 "+str(date.today().year) , "%a %b %d %H:%M:%S %Y") # of the form 'Tue Jul 22 20:03:00 2014'
             self.saveEvent( self.parentRecordID, eventTime, "Log-in: "+singleLogEntry)
     
             if( singleLogEntry.find("still logged in") == -1 ):
-                #extract extra event: log-out
+                #提取额外事件: log-out
                 #                                                   'Tue Jul 22'  '20:18'
                 eventTime =  datetime.datetime.strptime(singleLogEntry[39:49]+" "+singleLogEntry[58:63]+ ":00 "+str(date.today().year) , "%a %b %d %H:%M:%S %Y") # of the form 'Tue Jul 22 20:03:00 2014'
                 self.saveEvent( self.parentRecordID, eventTime, "Log-off: "+singleLogEntry)
@@ -748,16 +730,15 @@ class LogReader_UTMP_WTMP_Parser (LogReaderStdParser):
 
 # -- LogReader_BTMP_Parser classes --------------------------------------------------------------------------------------------
 class LogReader_BTMP_Parser(LogReaderStdParser):
-    """The /var/log/btmp records only failed login attempts. Use 'last -f /var/log/btmp' to view contents.
-    Use 'last -f /var/log/btmp' to view contents. Note: there may be more logs in this family, so use
-    a pattern of last -f /var/log/btmp* to select them.
+    """/var/log/btmp只记录失败的登录尝试。使用'last -f /var/log/btmp'来查看内容。
+    注意：这个系列中可能有更多的日志，所以使用 -f /var/log/btmp*的模式来进行选择。
     
     Example 'last -f /var/log/btmp' command output:
 
     carlos   ssh:notty    localhost        Tue Jul 22 20:04    gone - no logout"""
 
     def readLogFile(self):
-        """This method reads every line of text of every log files associated with this class"""
+        """此方法读取与该类相关的每个日志文件的每行文本。"""
         filenamePattern = self.logLocationAbsolutePath+"*"
         for file in glob.glob(filenamePattern):
             c=0
@@ -766,7 +747,7 @@ class LogReader_BTMP_Parser(LogReaderStdParser):
                     for line in file_object:
                         c+=1
                         print("    [*] {0:>12,} log entires parsed for file: '{1}'.".format(c, file), end="\r")
-                        line = line.rstrip() # remove training whitespaces including '\n'
+                        line = line.rstrip() # 删除末尾的指定字符，包括： '\n'
                         try:
                             subprocess_output = subprocess.check_output(["last", "-f", file]) 
                             for line in subprocess_output.splitlines():
@@ -780,11 +761,11 @@ class LogReader_BTMP_Parser(LogReaderStdParser):
 
 
     def decode_entry(self, singleLogEntry):
-        """This method decodes log entries for the /var/log/wtmp log file"
+        """此方法对/var/log/wtmp日志文件的日志记录进行解码。"
         @param: string - The a single line in the log containing the date, time and description of the event"""
         try:
-            #extract one event only: log-in
-            #format string obtained from https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+            #只提取事件: 
+            #格式字符串来自 https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
             eventTime =  datetime.datetime.strptime(singleLogEntry[39:55]+":00 "+str(date.today().year) , "%a %b %d %H:%M:%S %Y") # of the form 'Tue Jul 22 20:03:00 2014'
             self.saveEvent( self.parentRecordID, eventTime, "Faild login: "+singleLogEntry)
         except Exception as e:
@@ -797,7 +778,7 @@ class LogReader_BTMP_Parser(LogReaderStdParser):
 
 
 
-#--[ start of main program ]-----------------------------------------------------------------------------------------------------
+#--[ 主程序开始 ]-----------------------------------------------------------------------------------------------------
 
 db = dbLogs() # 实例化数据库对象  产生LinuxLogs.db
 
@@ -850,7 +831,7 @@ def readLogs( customRootDir="" ):
 
 
     # xorg log 解析器
-    LogReaderOffsetParserXORG("xorg log", filepath_xorg, "Contains a log of messages from the X"),
+    LogReaderOffsetParserXORG("xorg log", filepath_xorg, "包含一个来自X的信息日志。"),
         #sample log:
         #$ cat Xorg.0.log
         #...
@@ -860,15 +841,15 @@ def readLogs( customRootDir="" ):
         #[     4.124] (==) Log file: "/var/log/Xorg.0.log", Time: Mon Jul 14 20:48:05 2014   <-- notice RTC time comes in eventually!
         #[     4.124] (==) Using config file: "/etc/X11/xorg.conf"
         #[     4.124] (==) Using system config directory "/usr/share/X11/xorg.conf.d"
-    #deallocate/release memory that we do not need anymore
+    #释放我们不再需要的内存
     logReader = 0
     gc.collect()
 
     # messages log 解析器
     logReader = LogReaderStdParser(
-        "messages log", filepath_messages, "Contains global system messages, "+ \
-        "including the messages that are logged during system startup. Several "+ \
-        "things are in this log, such as: mail, cron, daemon, kern, auth, etc."),
+        "messages log", filepath_messages, "包含全局系统信息, "+ \
+        "包括系统启动时记录的信息。"+ \
+        "这个日志中包含诸如: mail, cron, daemon, kern, auth等信息。"),
         #sample log:
         #$ head /var/log/messages
         #Jul 11 17:54:32 SpiderMan kernel: imklog 5.8.11, log source = /proc/kmsg started.
@@ -882,11 +863,7 @@ def readLogs( customRootDir="" ):
 
     #syslog log 解析器
     logReader = LogReaderStdParser(
-        "syslog log", filepath_syslog, "Syslog is a way for network devices to send "+ \
-        "event messages to a logging server, usually known as a Syslog server. Most "+ \
-        "network equipment, like routers and switches, can send Syslog messages. Not only "+ \
-        "that, but *nix servers also have the ability to generate Syslog data, as do most "+ \
-        "firewalls, some printers, and even web-servers like Apache. "),
+        "syslog log", filepath_syslog, "Syslog是一种网络设备发送事件信息到日志服务器的方式，通常被称为Syslog服务器。大多数网络设备，如路由器和交换机，可以发送Syslog信息。不仅如此，*nix服务器也有能力生成Syslog数据，大多数防火墙、一些打印机，甚至像Apache这样的网络服务器也是如此。 "),
         #sample log:
         #$ head /var/log/syslog
         #Jun 29 07:39:42 SpiderMan rsyslogd: [origin software="rsyslogd" swVersion="5.8.11" x-pid="580" x-info="http://www.rsyslog.com"] rsyslogd was HUPed
@@ -899,38 +876,35 @@ def readLogs( customRootDir="" ):
 
     # auth log 认证日志解析器
     logReader = LogReaderStdParser(
-        "auth log", filepath_auth, "Contains system authorization information, "+ \
-        "including user logins and authentication machinsm that were used."),
+        "auth log", filepath_auth, "包含系统授权信息，以及用户登录和使用的认证机器。"),
         #sample log:
         #$ head /var/log/auth.log
         #Jul 11 17:53:22 SpiderMan sudo: pam_unix(sudo:session): session opened for user root by carlos(uid=0)
         #Jul 11 17:54:32 SpiderMan sudo:   carlos : TTY=pts/3 ; PWD=/home/carlos ; USER=root ; COMMAND=/sbin/restart rsyslog
         #Jul 11 17:54:32 SpiderMan sudo: pam_unix(sudo:session): session opened for user root by carlos(uid=0)
         #Jul 11 18:34:59 SpiderMan dbus[507]: [system] Rejected send message, 3 matched rules; type="method_return", sender=":1.66" (uid=1000 pid=2090 comm="/usr/bin/pulseaudio --start --log-target=syslog ") interface="(unset)" member="(unset)" error name="(unset)" requested_reply="0" destination=":1.2" (uid=0 pid=622 comm="/usr/sbin/bluetoothd ")
-    #deallocate/release memory that we do not need anymore
+    #释放我们不再需要的内存
     logReader = 0
     gc.collect()
 
 
     # dpkg log 解析器
     logReader = LogReaderParserYYYYMMDD(
-        "dpkg log", filepath_dpkg, "Records all the apt activities, such as installs "+ \
-        "or upgrades, for the various package managers (dpkg, apt-get, synaptic, aptitude)."),
+        "dpkg log", filepath_dpkg, "记录所有的apt活动，比如安装或升级，针对不同的软件包管理器（dpkg、apt-get、synaptic、aptitude）。"),
         #sample log:
         #$ head /var/log/dpkg.log
         #2014-07-04 16:55:36 trigproc desktop-file-utils:i386 0.21-1ubuntu3 0.21-1ubuntu3
         #2014-07-04 16:55:36 status half-configured desktop-file-utils:i386 0.21-1ubuntu3
         #2014-07-04 16:55:36 status installed desktop-file-utils:i386 0.21-1ubuntu3
         #2014-07-04 16:55:36 trigproc gnome-menus:i386 3.8.0-1ubuntu5 3.8.0-1ubuntu5
-    #deallocate/release memory that we do not need anymore
+    #释放我们不再需要的内存
     logReader = 0
     gc.collect()
 
 
     # kern log  内核日志解析器
     logReader = LogReaderStdParser(
-        "kern log", filepath_kern, "Contains information logged by the kernel. "+ \
-        "Helpful for you to troubleshoot a custom-built kernel."),
+        "kern log", filepath_kern, "包含由内核记录的信息。有助于你对定制的内核进行故障排除。"),
         #sample log:
         #$ head /var/log/kern.log
         #Jul 10 15:01:36 SpiderMan kernel: [    5.052266] wlan0: authenticate with 10:bf:48:53:c7:90
@@ -940,90 +914,81 @@ def readLogs( customRootDir="" ):
         #Jul 10 15:01:36 SpiderMan kernel: [    5.109448] wlan0: associate with 10:bf:48:53:c7:90 (try 1/3)
         #Jul 10 15:01:36 SpiderMan kernel: [    5.112845] wlan0: RX AssocResp from 10:bf:48:53:c7:90 (capab=0x411 status=0 aid=4)
         #Jul 10 15:01:36 SpiderMan kernel: [    5.114950] wlan0: associated
-    #deallocate/release memory that we do not need anymore
+    #释放我们不再需要的内存
     logReader = 0
     gc.collect()
 
 
     # cron log 解析器
     logReader = LogReaderStdParser(
-        "cron log", filepath_cron, "Whenever cron daemon (or anacron) starts a cron job, it "+ \
-        "logs the information about the cron job in this file"),
+        "cron log", filepath_cron, "每当cron daemon（或anacron）启动一个cron作业时，它都会在这个文件中记录关于cron作业的信息。"),
         #sample log:
         #$ head /var/log/cron.log
         #Jul 12 08:17:01 SpiderMan CRON[5040]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
-    #deallocate/release memory that we do not need anymore
+    #释放我们不再需要的内存
     logReader = 0
     gc.collect()
 
 
     # daemon log 线程日志解析器
     logReader = LogReaderStdParser(
-        "daemon log", filepath_deamon, "Contains information logged by the "+ \
-        "various background daemons that runs on the system"),
+        "daemon log", filepath_deamon, "包含在系统上运行的各种后台守护程序所记录的信息。"),
         #sample log:
         #$ head /var/log/daemon.log
         #Jul 12 08:04:20  whoopsie[1020]: last message repeated 4 times
         #Jul 12 08:05:20  whoopsie[1020]: last message repeated 2 times
         #Jul 12 08:09:02 SpiderMan whoopsie[1020]: online
         #Jul 12 08:15:16  whoopsie[1020]: last message repeated 5 times
-    #deallocate/release memory that we do not need anymore
+    #释放我们不再需要的内存
     logReader = 0
     gc.collect()
 
 
     # alternatives log 变更日志(比入软硬链接等) 解析器
     logReader = LogReaderParserTextYYYYMMDD(
-        "alternatives log", filepath_alternatives, "Information by the "+ \
-        "update-alternatives are logged into this log file. On Ubuntu, update-alternatives "+ \
-        "maintains symbolic links determining default commands."),
+        "alternatives log", filepath_alternatives, "更新-替代的信息被记录在这个日志文件中。在Ubuntu上，update-alternatives维护符号链接，确定默认命令。"),
         #sample log:
         #$ head /var/log/alternatives.log
         #update-alternatives 2014-07-01 15:43:11: link group tclsh updated to point to /usr/bin/tclsh8.5
         #update-alternatives 2014-07-01 15:43:11: link group wish updated to point to /usr/bin/wish8.5
         #update-alternatives 2014-07-02 23:29:03: run with --remove x-www-browser /usr/bin/chromium-browser
         #update-alternatives 2014-07-04 07:53:48: link group mailx updated to point to /usr/bin/heirloom-mailx
-    #deallocate/release memory that we do not need anymore
+    #释放我们不再需要的内存
     logReader = 0
     gc.collect()
 
 
     # cups access log 解析器
     logReader = LogReaderParserTextDateInSquareBrackets(
-        "cups access log", filepath_cupsaccess, "The access_log file lists each HTTP resource that "+ \
-        "is accessed by a web browser or client. Each line is in an extended version of the so-called 'Common "+ \
-        "Log Format' used by many web servers and web reporting tools")
+        "cups access log", filepath_cupsaccess, "access_log文件列出了每个被网络浏览器或客户端访问的HTTP资源。每一行都是许多网络服务器和网络报告工具所使用的所谓'通用日志格式'的扩展版本。")
         #sample log:
         #$ head /var/log/cups/access_log
         #localhost - - [12/Jul/2014:06:52:52 -0700] "POST / HTTP/1.1" 401 186 Renew-Subscription successful-ok
         #localhost - carlos [12/Jul/2014:06:52:52 -0700] "POST / HTTP/1.1" 200 186 Renew-Subscription successful-ok
         #localhost - - [12/Jul/2014:07:06:52 -0700] "POST / HTTP/1.1" 401 186 Renew-Subscription successful-ok
         #localhost - carlos [12/Jul/2014:07:06:52 -0700] "POST / HTTP/1.1" 200 186 Renew-Subscription successful-ok
-    #deallocate/release memory that we do not need anymore
+    #释放我们不再需要的内存
     logReader = 0
     gc.collect()
 
 
     # 用户日志解析器
     logReader = LogReaderStdParser(
-        "user log", filepath_user, "Contains information about all user level logs")
+        "user log", filepath_user, "包含所有用户级日志的信息。")
         #sample log:
         #$ head /var/log/cups/access_log
         #Jul 20 12:23:50 SpiderMan mtp-probe: bus: 3, device: 8 was not an MTP device
         #Jul 21 18:10:31 SpiderMan pulseaudio[2114]: [bluetooth] bluetooth-util.c: Failed to release transport /org/bluez/656/hci0/dev_00_0C_8A_6E_0E_B5/fd10: Method "Release" with signature "s" on interface "org.bluez.MediaTransport" doesn't exist
         #Jul 22 18:53:07 SpiderMan mtp-probe: checking bus 3, device 6: "/sys/devices/pci0000:00/0000:00:14.0/usb3/3-9/3-9.1"
         #Jul 22 18:53:12 SpiderMan pulseaudio[1845]: [pulseaudio] pid.c: Daemon already running.
-    #deallocate/release memory that we do not need anymore
+    #释放我们不再需要的内存
     logReader = 0
     gc.collect()
 
 
     # utmp  wtmp 日志 解析器
     logReader = LogReader_UTMP_WTMP_Parser(
-        "utmp & wtmp logs", filepath_utmp_wtmp, "The /var/run/utmp file will give you " +\
-        "complete picture of users logins at which terminals, logouts, system events and " +\
-        "current status of the system, system boot time (used by uptime) etc. Use 'last " +
-        "\-f /var/run/utmp' to view contents. The /var/log/wtmp gives historical data of utmp ")
+        "utmp & wtmp logs", filepath_utmp_wtmp, "/var/run/utmp文件将给你提供用户在哪些终端登录、注销、系统事件和系统的当前状态、系统启动时间（由uptime使用）等的完整信息。使用'last -f /var/run/utmp' 来查看内容。/var/log/wtmp给出了utmp的历史数据。 ")
         #sampel log:
         #$ last -f /var/log/wtmp
         #
@@ -1034,18 +999,15 @@ def readLogs( customRootDir="" ):
         #carlos   pts/3        :0               Mon Jul 21 15:21 - 21:05  (05:44)
         #
         #wtmp begins Wed Jul  2 23:30:12 2014 """
-    #deallocate/release memory that we do not need anymore
+    #释放我们不再需要的内存
     logReader = 0
     gc.collect()
 
 
     # BTMP 日志解析器
     logReader = LogReader_BTMP_Parser(
-        "btmp log", filepath_btmp, "The /var/log/btmp records only failed login attempts. " +\
-        "Use 'last -f /var/log/btmp' to view contents. Use 'last -f /var/log/btmp' to view " +\
-        "contents. Note: there may be more logs in this family, so use a pattern of last  " +\
-        "-f /var/log/btmp* to select them.")
-    #deallocate/release memory that we do not need anymore
+        "btmp log", filepath_btmp, "/var/log/btmp只记录失败的登录尝试。使用'last -f /var/log/btmp'来查看内容。使用'last -f /var/log/btmp'查看内容。注意：这个家族中可能有更多的日志，所以使用‘last -f /var/log/btmp*’的模式来选择它们。")
+    #释放我们不再需要的内存
     logReader = 0
     gc.collect()
 
@@ -1067,8 +1029,8 @@ def main(argv):
                                                         type=int, metavar="logID")  #optional w/argument
     parser.add_argument("--query",help="搜索LinuxLogs数据库，数据库中的所有事件，在 +- N秒内"+\
                                                        "从特定日期/时间开始。“dateTimeStr”应该是这种格式 'YYYY-MM-DD hh:mm:ss, N' "+\
-                                                       "例如: '2014-02-19 19:07:05, 3' 将列出所有日志时间处于"+\
-                                                       "'2014-02-19 19:07:02' 和 '2014-02-19 19:07:08' (含)之间的所有事件.", \
+                                                       "例如: '2022-02-19 19:07:05, 3' 将列出所有日志时间处于"+\
+                                                       "'2022-02-19 19:07:02' 和 '2022-02-19 19:07:08' (含)之间的所有事件.", \
                                                        type=str, metavar="dateTimeStr")  #optional w/argument
     parser.add_argument("--logs",help="列出LinuxLogs.db中存储的所有Logid和相关日志名。", action='store_true')  #optional
     parser.add_argument("--rootDir",help="将Linux磁盘映像解压缩到所选目录时，请使用此选项。必须提供您具有读取权限的绝对路径。警告：这将导致“LinuxLogs”。要在新的根目录中擦除的数据库和要重新读取的日志。\
@@ -1082,49 +1044,49 @@ def main(argv):
         pass
 
     if( args.resetDB ):
-        print("[*] resetDB detected")
+        print("[*] 检测到数据库重置。")
         databaseReset()
         readLogs()
 
     if( args.logs ):
-        print("[*] logs detected")
+        print("[*] 检测到日志。")
         db.listLogIDs()
 
     if( args.contents!=None ):
-        print("[*] contents with LogID={0} detected".format(args.contents))
+        print("[*] 检测到包含LogID={0}的日志".format(args.contents))
         db.displayLogContents(args.contents)
 
     if( args.query!=None ):
-        print("[*] query with datetimeStr='{0}' detected".format(args.query))
-        #validate input
+        print("[*] 检测到datetimeStr='{0}'的序列".format(args.query))
+        #非法输入
         formatAccepted = False
         splitQueryStr = args.query.split(',')
         try:
             parsedDateTime = datetime.datetime.strptime(splitQueryStr[0], "%Y-%m-%d %H:%M:%S")
         except Exception as e:
-            print("Opps! The DATE-TIME part of the query string you typed does not conform to the format: 'YYYY-MM-DD hh:mm:ss', please try again.")
+            print("不好! 你输入的查询字符串中的日期-时间部分不符合格式： 'YYYY-MM-DD hh:mm:ss', 请重试。")
         else:
             try:
                 isInteger = isinstance( int(splitQueryStr[1]), (int, long))
             except Exception  as e:
-                print("Opps! The 'N' part of the query string you typed was not recognized and an integer, please try again.")
+                print("不好! 你输入的查询字符串的'N'部分没有被识别为一个整数,请重试。")
             else:
                 print("[*]format accepted")
-                #compute START-of-window-datetime and END-of-window-datetime
+                #计算窗口开始时间和窗口结束时间
                 try:
                     startOfWindow = parsedDateTime - datetime.timedelta(0, int(splitQueryStr[1]))
                     endOfWindow   = parsedDateTime + datetime.timedelta(0, int(splitQueryStr[1]))
-                    print("[*]startOfWindow = '{0}' to endOfWindow = '{1}'".format(str(startOfWindow), str(endOfWindow)))
+                    print("[*]从窗口开始时间 = '{0}' 到窗口结束时间 = '{1}'".format(str(startOfWindow), str(endOfWindow)))
                     db.queryEventsDateTimeWindow( startOfWindow, endOfWindow)
                 except Exception as e:
                     pass
 
     if( args.stringMatch!=None ):
-        print("[*] query with stringMatch='{0}' detected".format(args.stringMatch))
+        print("[*] 检测到stringMatch='{0}'的序列。".format(args.stringMatch))
         db.queryEventsSalientStr( args.stringMatch )
 
     if( args.rootDir!=None):
-        print("[*] rootDir detected with '{0}'".format(args.rootDir))
+        print("[*] 检测到的根目录有： '{0}'".format(args.rootDir))
         databaseReset()
         readLogs(args.rootDir)
 
