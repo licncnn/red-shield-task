@@ -1029,8 +1029,8 @@ def main(argv):
                                                         type=int, metavar="logID")  #optional w/argument
     parser.add_argument("--query",help="搜索LinuxLogs数据库，数据库中的所有事件，在 +- N秒内"+\
                                                        "从特定日期/时间开始。“dateTimeStr”应该是这种格式 'YYYY-MM-DD hh:mm:ss, N' "+\
-                                                       "例如: '2022-02-19 19:07:05, 3' 将列出所有日志时间处于"+\
-                                                       "'2022-02-19 19:07:02' 和 '2022-02-19 19:07:08' (含)之间的所有事件.", \
+                                                       "例如: '2022-05-1 19:07:05, 3' 将列出所有日志时间处于"+\
+                                                       "'2022-05-1 19:07:02' 和 '2022-02-19 19:07:08' (含)之间的所有事件.", \
                                                        type=str, metavar="dateTimeStr")  #optional w/argument
     parser.add_argument("--logs",help="列出LinuxLogs.db中存储的所有Logid和相关日志名。", action='store_true')  #optional
     parser.add_argument("--rootDir",help="将Linux磁盘映像解压缩到所选目录时，请使用此选项。必须提供您具有读取权限的绝对路径。警告：这将导致“LinuxLogs”。要在新的根目录中擦除的数据库和要重新读取的日志。\
