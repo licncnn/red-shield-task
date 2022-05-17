@@ -6,24 +6,7 @@
 #  介绍: 它是一个整合Linux日志的工具，可以方便的用于日志取证，使取证调查者能够查询所有事件，
 #       在一个事件发生的时间窗口内(即+/- 3秒)的所有日志。LinuxLogs能够
 #       搜索感兴趣的字符串。)，因为所有的事件都在一个方便的关系数据库。
-#               The following Linux logs are processed:
-#                     '/var/log/dmesg'
-#                     '/var/log/messages'
-#                     '/var/log/syslog'
-#                     '/var/log/auth'
-#                     '/var/log/daemon'
-#                     '/var/log/dpkg'
-#                     '/var/log/kern'
-#                     '/var/log/Xorg'
-#                     '/var/log/alternatives'
-#                     '/var/log/cups'
-#                     '/var/log/cron'
-#                     '/var/log/wtmp'
-#                     '/var/run/utmp'
-#                     '/var/log/btmp'
-#                     '/var/log/user'
-#                     '/var/log/secure'
-#                     
+
 #  Notes/Observations:
 #      1) 未来的改进
             # a)合并两个offset类
@@ -33,54 +16,16 @@
             # e)添加对自动监控和显著性触发和变更的支持
             # d)添加GUI支持
             # f)添加对许多其他日志的支持
-#
 #      2) 部分日志为二进制或加密日志。使用“last -f /path/to/log”命令以可读的格式访问它们的内容
             # /var/run/utmp
             # /var/log/wtmp
             # /var/log/btmp
             #此外，/var/log/btmp需要根权限来在活动系统上进行读访问;然而，在法医分析日志时
             #(从一个磁盘映像并将所有文件解压缩到一个目录中)这个脚本将使用——root选项读取/var/log/btmp日志
-
-#      3) 以下日志的内容中没有日期和/或时间，因此不适合此脚本的目的
+#       3) 以下日志的内容中没有日期和/或时间，因此不适合此脚本的目的
         # a)/var/log/boot
         # b) /var/log/lastlog
-#
-#       4) /var/log/anaconda.log在我开发的Ubuntu Linux发行版中没有使用。因此，它没有被包括在内
-        #在这个脚本的1.0版本中。但是，/var/log/anaconda.log处理将在未来的版本中加入到这个脚本中。
-      # 5)日志/var/log/faillog被排除，因为它提供了当前的/var/log/btmp文件已经提供的信息
-#被解析的日志文件。
-#
-#
-#
-#
-#
-#  更新日志:
-#               06/15/2014   Create initial version. Created LinuxLog shell class and tested reading-in all logs
-#               06/23/2014   Add support to parse /var/log/dmesg
-#               06/24/2014   Add support to normalize time in /var/log/dmesg by using "RTC time: 14:13:21, date: 06/28/14"
-#                            along with the event offset i.e. [    0.178863]
-#               06/27/2014   Add support for 4 additional types of logs
-#               07/03/2014   Desig database tables along with drop/create capabilities
-#               07/05/2014   Parsed log data in a db friendly format
-#               07/08/2014   Add support to store log file metadata to the parent LOG database table
-#               07/12/2014   Add support to store event logs to child LOGEVENTS database table while maintaining the
-#                            database relationship between the parent LOG record and the  children records in LOGEVENTS table
-#               07/15/2014   Add support for arguments and all options along with their respective arguments if applicable.
-#                            Validate all arguments to minimize avoid
-#               07/19/2014   Add support for custom root directory other than the default Linux root directory, '/'. This
-#                            feature is essential for Forensic Investigators in which they would extract a disk image
-#                            either with a 'dd', a 'tar' or similar commands.
-#               07/20/2014   Add support to read each log's archive version which come in two flavors: logname.version and logname.version.gz
-#                            The reasoning behind this is to be complete and capture all log events.
-#               07/20/2014   Add support to remove duplicates cause by reading in all archived versions of a log
-#               07/21/2014   Timing analysis for dmesg log family and made some minor adjustments.
-#               07/24/2014   Added support for utmp, wtmp and btmp logs
-#
-#
-#
-#
-
-
+#       5)日志/var/log/faillog被排除，因为它提供了当前的/var/log/btmp文件已经提供的信息
 
 # /var/log/messages—包含全局系统消息，包括系统启动时记录的消息。在/var/log/messages中记录了一些内容，包括邮件、cron、守护进程、kern、auth等。
 # /var/log/dmesg -内核环缓冲区信息。当系统启动时，它会在屏幕上打印一些消息，这些消息显示内核在启动过程中检测到的硬件设备的信息。这些消息在内核循环缓冲区中可用，每当新消息出现时，旧消息就会被覆盖。您也可以使用dmesg命令查看该文件的内容。
@@ -1097,12 +1042,10 @@ def main(argv):
         args.stringMatch==None and
         args.rootDir==None ):
         
-        print("[*] 未检测到任何选项，请输入 'LinuxLogs.py --help' 来获取有关如何使用此脚本的帮助 \n\n用户引导:\n\n" +\
-              "如果你是取证人员, \n\n" +\
-              "     以下是您必须按照指定顺序执行的步骤:\n\n" +\
-              "     1. 将磁盘映像中的所有文件提取到子目录，例如，将它们提取到FooBarDir \n\n" +\
-              "     2. 让这个脚本读取、解析并将日志存储到数据库“LinuxLogs”中。使用以下命令： $python LinuxLogs.py --rootDir 'FooBarDir' \n\n" +\
-              
+        print("[*] 未检测到任何选项，请输入 'python linuxlog.py --help' 来获取使用此脚本的帮助 \n\n用户引导:\n\n" +\
+              " 如果所有日志文件已经被提取到指定目录而非/var/log/ 可以使用--rootDir来指定目录\n\n"+\
+              "\t\t$python LinuxLogs.py --rootDir 'directory' \n\n" +\
+
               "如果您是网络安全人员或系统管理员，\n\n" +\
               "     你必须先做这一步:\n\n" +\
               "     1. 让这个脚本读取、解析并将日志存储到“LinuxLogs”中。 数据库最好以root用户身份运行:  $sudo python LinuxLogs.py --resetDB (以root权限运行上述命令将授予您对/var/log/btmp日志文件的读取权限)\n\n" +\
